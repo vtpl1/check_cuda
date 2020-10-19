@@ -1,3 +1,3 @@
-from .check_cuda import main
+from .main import main
 
 main()

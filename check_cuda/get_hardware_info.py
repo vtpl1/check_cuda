@@ -1,6 +1,7 @@
 from cpuinfo import get_cpu_info
 import logging
 from .data_models.device import DeviceList, Device
+from .check_cuda import get_cuda_info
 from multiprocessing import Process, freeze_support
 
 LOGGER = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ def get_hardware_info() -> DeviceList:
         
     
 
-    ret = DeviceList(cpu_name, cpu_frequency, cpu_arch, cpu_bits, cpu_count, cpu_vendor_id)
+    ret = DeviceList(cpu_name, cpu_frequency, cpu_arch, cpu_bits, cpu_count, cpu_vendor_id, get_cuda_info())
     LOGGER.info(ret)
 
     return ret

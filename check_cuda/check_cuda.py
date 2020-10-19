@@ -13,14 +13,17 @@ from Python without resorting to nvidia-smi or a compiled Python extension.
 Author: Jan Schlüter
 """
 
-import sys
 import ctypes
 import logging
-import yaml
 import os
-from singleton_decorator import singleton
-from .data_models.device import Device
+import sys
 from typing import List
+
+import yaml
+from singleton_decorator import singleton
+
+from .data_models.device import Device
+
 # Some constants taken from cuda.h
 CUDA_SUCCESS = 0
 CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT = 16
@@ -80,7 +83,7 @@ class CheckCuda(object):
             for libname in libnames:
                 try:
                     self.__cuda = ctypes.CDLL(libname)
-                    LOGGER.info('Loading libraries')
+                    LOGGER.info('Loading cuda libraries')
                 except OSError:
                     continue
                 else:
@@ -109,7 +112,7 @@ class CheckCuda(object):
                         self.__cuda.cuGetErrorString(result,
                                                      ctypes.byref(error_str))
                         LOGGER.error("cuInit failed with error code %d: %s" %
-                              (result, error_str.value.decode()))
+                                     (result, error_str.value.decode()))
                         break
                     result = self.__cuda.cuDeviceGetCount(ctypes.byref(nGpus))
                     if result != CUDA_SUCCESS:
@@ -119,118 +122,124 @@ class CheckCuda(object):
                             "cuDeviceGetCount failed with error code %d: %s" %
                             (result, error_str.value.decode()))
                         break
-                    LOGGER.error("Found %d device(s)." % nGpus.value)
+                    LOGGER.debug("Found %d device(s)." % nGpus.value)
                     for i in range(nGpus.value):
+                        cuda_device_name = ''
+                        cuda_compute_capability_major = 0
+                        cuda_compute_capability_minor = 0
+                        cuda_cores = 0
+                        cuda_concurrent_threads = 0
+                        cuda_gpu_clock_mhz = 0
+                        cuda_memory_clock_mhz = 0
+                        cuda_total_memory_mib = 0
+                        cuda_free_memory_mib = 0
+
                         result = self.__cuda.cuDeviceGet(
                             ctypes.byref(device), i)
                         if result != CUDA_SUCCESS:
                             self.__cuda.cuGetErrorString(
                                 result, ctypes.byref(error_str))
-                            LOGGER.error("cuDeviceGet failed with error code %d: %s" %
-                                  (result, error_str.value.decode()))
+                            LOGGER.error(
+                                "cuDeviceGet failed with error code %d: %s" %
+                                (result, error_str.value.decode()))
                             break
-                        LOGGER.info("Nvidia Device: %d" % i)
-                        cuda_device_name = ''
+                        LOGGER.debug("Nvidia Device: %d" % i)
+
                         if self.__cuda.cuDeviceGetName(ctypes.c_char_p(name),
                                                        len(name),
                                                        device) == CUDA_SUCCESS:
-                            cuda_device_name = (name.split(b'\0', 1)[0].decode())
+                            cuda_device_name = (name.split(b'\0',
+                                                           1)[0].decode())
 
-                            LOGGER.info("  Name: %s" %
-                                  cuda_device_name)
+                            LOGGER.debug("  Name: %s" % cuda_device_name)
                         if self.__cuda.cuDeviceComputeCapability(
                                 ctypes.byref(cc_major), ctypes.byref(cc_minor),
                                 device) == CUDA_SUCCESS:
-                            print("  Compute Capability: %d.%d" %
-                                  (cc_major.value, cc_minor.value))
+                            cuda_compute_capability_major = cc_major.value
+                            cuda_compute_capability_minor = cc_minor.value
+
+                            LOGGER.debug("  Compute Capability: %d.%d" %
+                                        (cuda_compute_capability_major,
+                                         cuda_compute_capability_minor))
                         if self.__cuda.cuDeviceGetAttribute(
                                 ctypes.byref(cores),
                                 CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT,
                                 device) == CUDA_SUCCESS:
-                            print("  Multiprocessors: %d" % cores.value)
-                            print("  CUDA Cores: %s" %
-                                  (cores.value * ConvertSMVer2Cores(
-                                      cc_major.value, cc_minor.value)
-                                   or "unknown"))
+                            LOGGER.debug("  Multiprocessors: %d" % cores.value)
+                            cuda_cores = cores.value * ConvertSMVer2Cores(
+                                cc_major.value, cc_minor.value)
+                            LOGGER.debug("  CUDA Cores: %s" %
+                                        (cuda_cores or "unknown"))
                             if self.__cuda.cuDeviceGetAttribute(
                                     ctypes.byref(threads_per_core),
                                     CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR,
                                     device) == CUDA_SUCCESS:
-                                print("  Concurrent threads: %d" %
-                                      (cores.value * threads_per_core.value))
+                                cuda_concurrent_threads = cores.value * threads_per_core.value
+                                LOGGER.debug("  Concurrent threads: %d" %
+                                            (cuda_concurrent_threads))
                         if self.__cuda.cuDeviceGetAttribute(
                                 ctypes.byref(clockrate),
                                 CU_DEVICE_ATTRIBUTE_CLOCK_RATE,
                                 device) == CUDA_SUCCESS:
-                            print("  GPU clock: %g MHz" %
-                                  (clockrate.value / 1000.))
+                            cuda_gpu_clock_mhz = clockrate.value / 1000.
+                            LOGGER.debug("  GPU clock: %g MHz" %
+                                        (cuda_gpu_clock_mhz))
                         if self.__cuda.cuDeviceGetAttribute(
                                 ctypes.byref(clockrate),
                                 CU_DEVICE_ATTRIBUTE_MEMORY_CLOCK_RATE,
                                 device) == CUDA_SUCCESS:
-                            print("  Memory clock: %g MHz" %
-                                  (clockrate.value / 1000.))
+                            cuda_memory_clock_mhz = clockrate.value / 1000.
+                            LOGGER.debug("  Memory clock: %g MHz" %
+                                        (cuda_memory_clock_mhz))
                         result = self.__cuda.cuCtxCreate(
                             ctypes.byref(context), 0, device)
                         if result != CUDA_SUCCESS:
                             self.__cuda.cuGetErrorString(
                                 result, ctypes.byref(error_str))
-                            print("cuCtxCreate failed with error code %d: %s" %
-                                  (result, error_str.value.decode()))
+                            LOGGER.error(
+                                "cuCtxCreate failed with error code %d: %s" %
+                                (result, error_str.value.decode()))
                         else:
                             result = self.__cuda.cuMemGetInfo(
                                 ctypes.byref(freeMem), ctypes.byref(totalMem))
                             if result == CUDA_SUCCESS:
-                                print("  Total Memory: %ld MiB" %
-                                      (totalMem.value / 1024**2))
-                                print("  Free Memory: %ld MiB" %
-                                      (freeMem.value / 1024**2))
+                                cuda_total_memory_mib = totalMem.value / 1024**2
+                                LOGGER.debug("  Total Memory: %ld MiB" %
+                                            (cuda_total_memory_mib))
+
+                                cuda_free_memory_mib = freeMem.value / 1024**2
+
+                                LOGGER.debug("  Free Memory: %ld MiB" %
+                                      (cuda_free_memory_mib))
                             else:
                                 self.__cuda.cuGetErrorString(
                                     result, ctypes.byref(error_str))
-                                print(
+                                LOGGER.error(
                                     "cuMemGetInfo failed with error code %d: %s"
                                     % (result, error_str.value.decode()))
                             self.__cuda.cuCtxDetach(context)
-                        self.__is_cuda_available = True
+                        self.__cuda_device_list.append(
+                            Device(
+                                cuda_device_name,
+                                cuda_compute_capability_major,
+                                cuda_compute_capability_minor,
+                                cuda_cores,
+                                cuda_concurrent_threads,
+                                cuda_gpu_clock_mhz,
+                                cuda_memory_clock_mhz,
+                                cuda_total_memory_mib,
+                                cuda_free_memory_mib,
+                            ))
 
         return self.__cuda_device_list
 
     def is_cuda_available(self) -> bool:
         return len(self.get_cuda_info()) > 0
 
-def setup_logging(default_path='logging.yaml',
-                  default_level=logging.INFO,
-                  env_key='LOG_CFG'):
-    """Setup logging configuration
 
-    """
-
-    path = default_path
-    print("Current working directory", path)
-    # value = os.getenv(env_key, None)
-    # if value:
-    #     path = value
-    if os.path.exists(path):
-        print("Got path")
-        with open(path, 'rt') as f:
-            config = yaml.safe_load(f.read())
-        logging.config.dictConfig(config)
-    else:
-        print("Not got path")
-        logging.basicConfig(level=default_level,
-                            format="%(levelname)s - %(name)45s - %(message)s")
+def is_cuda_available() -> bool:
+    return CheckCuda().is_cuda_available()
 
 
-def main():
-    from .get_hardware_info import get_hardware_info
-    setup_logging()
-    get_hardware_info()
-    # from cpuinfo import get_cpu_info
-    # x = get_cpu_info()
-    # print(x, "------------------------------------")
-    # print(x['brand_raw'])
-    # print(id(CheckCuda()), CheckCuda().is_cuda_available())
-    # print(id(CheckCuda()), CheckCuda().is_cuda_available())
-    # print(id(CheckCuda()), CheckCuda().is_cuda_available())
-    # print(id(CheckCuda()), CheckCuda().is_cuda_available())
+def get_cuda_info() -> List[Device]:
+    return CheckCuda().get_cuda_info()
