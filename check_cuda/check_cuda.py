@@ -154,8 +154,7 @@ class CheckCuda(object):
 
         return self.__is_cuda_available
 
-
-if __name__ == "__main__":
+def main():
 
     print(id(CheckCuda()), CheckCuda().is_cuda_available())
     print(id(CheckCuda()), CheckCuda().is_cuda_available())
