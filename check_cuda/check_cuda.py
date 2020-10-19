@@ -19,12 +19,16 @@ import logging
 import yaml
 import os
 from singleton_decorator import singleton
+from .data_models.device import Device
+from typing import List
 # Some constants taken from cuda.h
 CUDA_SUCCESS = 0
 CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT = 16
 CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR = 39
 CU_DEVICE_ATTRIBUTE_CLOCK_RATE = 13
 CU_DEVICE_ATTRIBUTE_MEMORY_CLOCK_RATE = 36
+
+LOGGER = logging.getLogger(__name__)
 
 
 def ConvertSMVer2Cores(major, minor):
@@ -68,15 +72,15 @@ class CheckCuda(object):
 
     def __init__(self):
         self.__cuda = None
-        self.__is_cuda_available = False
+        self.__cuda_device_list = []
 
-    def is_cuda_available(self) -> bool:
+    def get_cuda_info(self) -> List[Device]:
         if self.__cuda is None:
             libnames = ('libcuda.so', 'libcuda.dylib', 'cuda.dll')
             for libname in libnames:
                 try:
                     self.__cuda = ctypes.CDLL(libname)
-                    print("Loading libs")
+                    LOGGER.info('Loading libraries')
                 except OSError:
                     continue
                 else:
@@ -104,33 +108,36 @@ class CheckCuda(object):
                     if result != CUDA_SUCCESS:
                         self.__cuda.cuGetErrorString(result,
                                                      ctypes.byref(error_str))
-                        print("cuInit failed with error code %d: %s" %
+                        LOGGER.error("cuInit failed with error code %d: %s" %
                               (result, error_str.value.decode()))
                         break
                     result = self.__cuda.cuDeviceGetCount(ctypes.byref(nGpus))
                     if result != CUDA_SUCCESS:
                         self.__cuda.cuGetErrorString(result,
                                                      ctypes.byref(error_str))
-                        print(
+                        LOGGER.error(
                             "cuDeviceGetCount failed with error code %d: %s" %
                             (result, error_str.value.decode()))
                         break
-                    print("Found %d device(s)." % nGpus.value)
+                    LOGGER.error("Found %d device(s)." % nGpus.value)
                     for i in range(nGpus.value):
                         result = self.__cuda.cuDeviceGet(
                             ctypes.byref(device), i)
                         if result != CUDA_SUCCESS:
                             self.__cuda.cuGetErrorString(
                                 result, ctypes.byref(error_str))
-                            print("cuDeviceGet failed with error code %d: %s" %
+                            LOGGER.error("cuDeviceGet failed with error code %d: %s" %
                                   (result, error_str.value.decode()))
                             break
-                        print("Device: %d" % i)
+                        LOGGER.info("Nvidia Device: %d" % i)
+                        cuda_device_name = ''
                         if self.__cuda.cuDeviceGetName(ctypes.c_char_p(name),
                                                        len(name),
                                                        device) == CUDA_SUCCESS:
-                            print("  Name: %s" %
-                                  (name.split(b'\0', 1)[0].decode()))
+                            cuda_device_name = (name.split(b'\0', 1)[0].decode())
+
+                            LOGGER.info("  Name: %s" %
+                                  cuda_device_name)
                         if self.__cuda.cuDeviceComputeCapability(
                                 ctypes.byref(cc_major), ctypes.byref(cc_minor),
                                 device) == CUDA_SUCCESS:
@@ -187,8 +194,10 @@ class CheckCuda(object):
                             self.__cuda.cuCtxDetach(context)
                         self.__is_cuda_available = True
 
-        return self.__is_cuda_available
+        return self.__cuda_device_list
 
+    def is_cuda_available(self) -> bool:
+        return len(self.get_cuda_info()) > 0
 
 def setup_logging(default_path='logging.yaml',
                   default_level=logging.INFO,
@@ -209,7 +218,8 @@ def setup_logging(default_path='logging.yaml',
         logging.config.dictConfig(config)
     else:
         print("Not got path")
-        logging.basicConfig(level=default_level, format="%(levelname)s - %(name)45s - %(message)s")
+        logging.basicConfig(level=default_level,
+                            format="%(levelname)s - %(name)45s - %(message)s")
 
 
 def main():
