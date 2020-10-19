@@ -18,9 +18,14 @@ def get_version():
 
 
 setup(
+    # dependency_links=[
+    #     'git+https://github.com/vtpl1/singleton_decorator.git@master#egg=singleton-decorator'
+    # ],
     install_requires=[
-    'singleton-decorator@git+ssh://git@github.com/vtpl1/singleton_decorator.git',
-    'py-cpuinfo', 'dataclasses'
+        'singleton_decorator@git+https://github.com/vtpl1/singleton_decorator.git',
+        'py-cpuinfo',
+        'PyYAML',
+        'dataclasses'
     ],
       name="check-cuda",
       version=get_version(),

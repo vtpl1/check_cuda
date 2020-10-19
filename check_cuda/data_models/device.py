@@ -1,8 +1,9 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List
 
 
 @dataclass
-class Device(object):
+class Device():
     """
     device data
     """
@@ -15,3 +16,17 @@ class Device(object):
     gpu_memory_clock_mhz: int
     total_memory_mib: int
     free_memory_mib: int
+
+
+@dataclass
+class DeviceList():
+    """
+    device list
+    """
+    name: str
+    frequency: str
+    arch: str
+    bits: int
+    count: int
+    vendor_id: str
+    device_list: List[Device] = field(default_factory=list)
