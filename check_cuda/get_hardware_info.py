@@ -1,6 +1,6 @@
 from cpuinfo import get_cpu_info
 import logging
-from .data_models.device import DeviceList, Device
+from .data_models.cuda_device import DeviceList, CudaDevice
 from .check_cuda import get_cuda_info
 from multiprocessing import Process, freeze_support
 

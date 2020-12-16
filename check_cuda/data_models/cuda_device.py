@@ -3,10 +3,11 @@ from typing import List
 
 
 @dataclass
-class Device():
+class CudaDevice():
     """
     device data
     """
+    gpu_id: int
     name: str
     compute_capability_major: int
     compute_capability_minor: int
@@ -28,4 +29,4 @@ class DeviceList():
     bits: int
     count: int
     vendor_id: str
-    device_list: List[Device] = field(default_factory=list)
+    device_list: List[CudaDevice] = field(default_factory=list)

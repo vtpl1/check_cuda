@@ -14,7 +14,7 @@ def read(rel_path):
 
 
 def get_version():
-    return read("VERSION")
+    return read("check_cuda/VERSION")
 
 
 setup(
@@ -22,19 +22,17 @@ setup(
     #     'git+https://github.com/vtpl1/singleton_decorator.git@master#egg=singleton-decorator'
     # ],
     install_requires=[
-        'singleton_decorator@git+https://github.com/vtpl1/singleton_decorator.git',
-        'py-cpuinfo',
-        'PyYAML',
+        'singleton_decorator@git+https://github.com/vtpl1/singleton_decorator.git', 'py-cpuinfo', 'PyYAML',
         'dataclasses'
     ],
-      name="check-cuda",
-      version=get_version(),
-      fullname="Get NVIDIA GPU devices",
-      description="Get NVIDIA GPU devices",
-      author="Monotosh Das",
-      author_email="monotosh.das@videonetics.com",
-      keywords="cuda cpu hardware",
-      long_description=open('README.md').read(),
-      url="https://github.com/vtpl1/check_cuda",
-      license="MIT",
-      packages=find_packages(exclude=["*.tests"]))
+    name="check-cuda",
+    version=get_version(),
+    fullname="Get NVIDIA GPU devices",
+    description="Get NVIDIA GPU devices",
+    author="Monotosh Das",
+    author_email="monotosh.das@videonetics.com",
+    keywords="cuda cpu hardware",
+    long_description=open('README.md').read(),
+    url="https://github.com/vtpl1/check_cuda",
+    license="MIT",
+    packages=find_packages(exclude=["*.tests"]))
