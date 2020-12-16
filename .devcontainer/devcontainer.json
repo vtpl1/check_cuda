@@ -8,7 +8,7 @@
 	// Set *default* container specific settings.json values on container create.
 	"settings": {
 		"terminal.integrated.shell.linux": "/bin/bash",
-		"python.pythonPath": "/usr/local/bin/python",
+		"python.pythonPath": "/usr/bin/python3",
 		"python.linting.enabled": true,
 		"python.linting.pylintEnabled": true,
 		"python.formatting.autopep8Path": "/usr/local/bin/autopep8",
@@ -28,7 +28,7 @@
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 	"runArgs": [
-		"--gpus=all",
+		//"--gpus=all",
 		// "--network=host",
 		"-e",
 		"DISPLAY=${env:DISPLAY}",
