@@ -41,6 +41,6 @@ setup(
     package_data={'': ['*.yaml', 'VERSION']},
     entry_points={
         'console_scripts': [
-            'lopymo = lopymo.main:main',
+            'check_cuda = check_cuda.main:main',
         ],
     })
