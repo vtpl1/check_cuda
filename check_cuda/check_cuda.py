@@ -110,7 +110,6 @@ class CheckCuda(object):
             round((ps_process.memory_percent() / 100.0) *
                     psutil.virtual_memory().total)
         process['pid'] = nv_process.pid
-        pprint(process)
         return process
 
     def get_gpu_info(self, index) -> List[CudaDevice]:
