@@ -102,9 +102,9 @@ class CheckCuda(object):
             process['full_command'] = _cmdline
         # Bytes to MBytes
         # if drivers are not TTC this will be None.
-        # usedmem = nv_process.usedGpuMemory // MB if \
-        #             nv_process.usedGpuMemory else None
-        # process['gpu_memory_usage'] = usedmem
+        usedmem = nv_process.usedGpuMemory // MB if \
+                    nv_process.usedGpuMemory else None
+        process['gpu_memory_usage'] = usedmem
         process['cpu_percent'] = ps_process.cpu_percent()
         process['cpu_memory_usage'] = \
             round((ps_process.memory_percent() / 100.0) *
