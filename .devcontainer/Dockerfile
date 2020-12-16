@@ -4,6 +4,8 @@ RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 RUN python3 get-pip.py
 RUN pip3 --disable-pip-version-check --no-cache-dir install autopep8 black yapf bandit flake8 mypy pycodestyle pydocstyle pylint bump2version
 RUN pip3 --disable-pip-version-check --no-cache-dir install py-cpuinfo dataclasses pyyaml git+https://github.com/vtpl1/singleton_decorator.git
+RUN pip3 --disable-pip-version-check --no-cache-dir install psutil
+RUN pip3 --disable-pip-version-check --no-cache-dir install pynvml
 
 ARG USERNAME=vadmin
 ARG USER_UID=1000

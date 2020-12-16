@@ -23,7 +23,8 @@ setup(
     # ],
     install_requires=[
         'singleton_decorator@git+https://github.com/vtpl1/singleton_decorator.git', 'py-cpuinfo', 'PyYAML',
-        'dataclasses'
+        'dataclasses',
+        'psutil', 'pynvml'
     ],
     name="check-cuda",
     version=get_version(),
