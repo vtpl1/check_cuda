@@ -26,8 +26,8 @@ import pynvml as N
 import yaml
 from singleton_decorator import singleton
 
+from .class_object_flattener import get_flatten_keys, get_flatten_keys_list, get_flatten_values_list
 from .data_models.cuda_device import CudaDevice
-from .class_object_flattener import get_flatten_keys, get_flatten_keys_list
 
 # Some constants taken from cuda.h
 CUDA_SUCCESS = 0
@@ -107,7 +107,9 @@ class CheckCuda(object):
                 continue
             if name == name_ or cmdline[0] == name or os.path.basename(exe) == name:
                 process_list.append(self._extract_process_info(ps_process))
+        dic = get_flatten_keys(process_list)
         print(get_flatten_keys_list(process_list))
+        print(get_flatten_values_list(process_list, dic))
         pprint(process_list)
         return process_list
 
@@ -129,8 +131,7 @@ class CheckCuda(object):
             process['command'] = os.path.basename(_cmdline[0])
             process['full_command'] = _cmdline
         process['cpu_percent'] = ps_process.cpu_percent() / psutil.cpu_count()
-        process['cpu_memory_usage'] = round((ps_process.memory_percent() / 100.0) *
-                  psutil.virtual_memory().total)
+        process['cpu_memory_usage'] = round((ps_process.memory_percent() / 100.0) * psutil.virtual_memory().total)
         process['pid'] = ps_process.pid
         return process
 
@@ -231,7 +232,7 @@ class CheckCuda(object):
                 'utilization.dec': utilization_dec[0] if utilization_dec else None,
                 'power.draw': power // 1000 if power is not None else None,
                 'enforced.power.limit': power_limit // 1000 if power_limit is not None else None,
-                # Convert bytes into MBytes
+            # Convert bytes into MBytes
                 'memory.used': memory.used // MB if memory else None,
                 'memory.total': memory.total // MB if memory else None,
                 'processes': processes,
