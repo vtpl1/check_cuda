@@ -1,4 +1,5 @@
 import collections
+from pprint import pprint
 from typing import Any, Dict, List, Union
 
 
@@ -11,38 +12,40 @@ def get_dict_or_list(in_dict1: Any) -> Any:
     return in_dict
 
 
+def get_str(in_key: Any) -> Union[str, None]:
+    return str(in_key) if in_key is not None else None
+
 def get_flatten_dict(in_dict1: Union[Dict[str, Any], List[Any]], in_key: str = None) -> Dict[str, str]:
     ret = dict()
-
+    in_key = get_str(in_key)
     in_dict_or_list = get_dict_or_list(in_dict1)
     if isinstance(in_dict_or_list, collections.Mapping):
         for k, v in in_dict_or_list.items():
             v1 = get_dict_or_list(v)
             if isinstance(v1, collections.Mapping) or isinstance(v1, list):
-                is_empty_dict = True  # special care for empty dictionary as values
+                # is_empty_dict = True  # special care for empty dictionary as values
                 for k_i, v_i in get_flatten_dict(v1, k).items():
                     key_i = k_i if in_key is None else in_key + '.' + k_i
                     ret[key_i] = v_i
                     is_empty_dict = False
-                if is_empty_dict:
-                    k = str(k)
-                    key = k if in_key is None else in_key + '.' + k
-                    ret[key] = k
+                # if is_empty_dict:
+                #     k = get_str(k)
+                #     key = k if in_key is None else in_key + '.' + k
+                #     ret[key] = k
             else:
-                k = str(k)
+                k = get_str(k)
                 key = k if in_key is None else in_key + '.' + k
                 ret[key] = k
     elif isinstance(in_dict_or_list, list):
         i = 0
         for v in in_dict_or_list:            
             k = '#' + str(i)
-            i += 1
             v1 = get_dict_or_list(v)
             if isinstance(v1, collections.Mapping) or isinstance(v1, list):
                 is_empty_dict = True  # special care for empty dictionary as values
                 for k_i, v_i in get_flatten_dict(v1, k).items():
                     key_i = k_i if in_key is None else in_key + '.' + k_i
-                    ret[key_i] = 'i#' + str(i) + v_i
+                    ret[key_i] = '#' + str(i) + v_i
                     is_empty_dict = False
                 if is_empty_dict:
                     key = k if in_key is None else in_key + '.' + k
@@ -50,6 +53,7 @@ def get_flatten_dict(in_dict1: Union[Dict[str, Any], List[Any]], in_key: str = N
             # else:
             #     key = k if in_key is None else in_key + '.' + k
             #     ret[key] = k
+            i += 1
     return ret
 
 
@@ -78,8 +82,13 @@ def get_value_for_key(obj: Any, in_key: str) -> Any:
     if k.startswith('#'):
         indx = int(k[1:])
         obj1 = obj[indx]
-    else:
-        obj1 = obj.get(k)
+    else:        
+        try:
+            k = int(k)  #to take care of dictionary having integer as key
+        except ValueError:
+            pass
+        
+        obj1 = get_dict_or_list(obj).get(k)
 
     if len(keys) > 1:
         return get_value_for_key(obj1, keys[1])

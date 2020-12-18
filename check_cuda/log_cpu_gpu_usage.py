@@ -18,10 +18,12 @@ class LogCpuGpuUsage(Thread):
 
     def run(self) -> None:
         LOGGER_CPU_USAGE.info("============== Start ================")
+
+
         obj = get_hardware_info()
         d = get_flatten_keys(obj)
-        LOGGER_CPU_USAGE.info(get_flatten_keys_list(obj))
-        LOGGER_CPU_USAGE.info(get_flatten_values_list(obj, d))
+        LOGGER.info(get_flatten_keys_list(d))
+        LOGGER.info(get_flatten_values_list(obj, d))
         # LOGGER_CPU_USAGE.info("Cores: {} Frequency: {} Mem: {} GB {}".format(
         #     psutil.cpu_count(),
         #     psutil.cpu_freq(),

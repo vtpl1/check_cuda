@@ -9,4 +9,4 @@ class SystemDevice():
     device list
     """
     cpus: List[IntelAmdDevice] = field(default_factory=list)
-    gpus: List[NvidiaDevice] = field(default_factory=list())
+    gpus: List[NvidiaDevice] = field(default_factory=list)

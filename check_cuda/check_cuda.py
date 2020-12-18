@@ -75,7 +75,7 @@ class CheckCuda(object):
     def __init__(self):
         self.__is_nvml_loaded = False
         self.__cuda = None
-        self.__nvidia_device_list: List[NvidiaDevice] = {}
+        self.__nvidia_device_list: List[NvidiaDevice] = []
         # self.__processes = {}
         print("Starting NVML")
         try:
@@ -108,10 +108,6 @@ class CheckCuda(object):
                 continue
             if name == name_ or cmdline[0] == name or os.path.basename(exe) == name:
                 process_list.append(self._extract_process_info(ps_process))
-        dic = get_flatten_keys(process_list)
-        print(get_flatten_keys_list(process_list))
-        print(get_flatten_values_list(process_list, dic))
-        pprint(process_list)
         return process_list
 
     def get_process_info(self, pid):
@@ -226,19 +222,23 @@ class CheckCuda(object):
                 'index': index,
                 'uuid': uuid,
                 'name': name,
-                'temperature.gpu': temperature,
-                'fan.speed': fan_speed,
-                'utilization.gpu': utilization.gpu if utilization else None,
-                'utilization.enc': utilization_enc[0] if utilization_enc else None,
-                'utilization.dec': utilization_dec[0] if utilization_dec else None,
-                'power.draw': power // 1000 if power is not None else None,
-                'enforced.power.limit': power_limit // 1000 if power_limit is not None else None,
+                'temperature': temperature,
+                'fan_speed': fan_speed,
+                'utilization_gpu': utilization.gpu if utilization else None,
+                'utilization_enc': utilization_enc[0] if utilization_enc else None,
+                'utilization_dec': utilization_dec[0] if utilization_dec else None,
+                'power_draw': power // 1000 if power is not None else None,
+                'enforced_power_limit': power_limit // 1000 if power_limit is not None else None,
             # Convert bytes into MBytes
-                'memory.used': memory.used // MB if memory else None,
-                'memory.total': memory.total // MB if memory else None,
+                'memory_used': memory.used // MB if memory else None,
+                'memory_total': memory.total // MB if memory else None,
                 'processes': processes,
             }
             pprint(gpu_info)
+
+            d = get_flatten_keys(gpu_info)
+            LOGGER.info(get_flatten_keys_list(d))
+            LOGGER.info(get_flatten_values_list(gpu_info, d))
         return self.__nvidia_device_list
 
     def get_cuda_info(self) -> List[CudaDevice]:
@@ -363,7 +363,7 @@ class CheckCuda(object):
                                 LOGGER.error("cuMemGetInfo failed with error code %d: %s" %
                                              (result, error_str.value.decode()))
                             self.__cuda.cuCtxDetach(context)
-                        self.__nvidia_device_list[i] = NvidiaDevice(
+                        self.__nvidia_device_list.append(NvidiaDevice(
                             i,
                             cuda_device_name,
                             cuda_compute_capability_major,
@@ -374,7 +374,7 @@ class CheckCuda(object):
                             cuda_memory_clock_mhz,
                             cuda_total_memory_mib,
                             cuda_free_memory_mib,
-                        )
+                        ))
 
         return self.__nvidia_device_list
 
@@ -387,6 +387,7 @@ def is_cuda_available() -> bool:
 
 
 def get_nvidia_device_info() -> List[NvidiaDevice]:
+    CheckCuda().get_cuda_info()
     return CheckCuda().get_nvidia_gpu_info()
 
 def get_cuda_info() -> List[CudaDevice]:
