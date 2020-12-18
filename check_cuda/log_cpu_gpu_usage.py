@@ -1,6 +1,8 @@
 from threading import Thread, Event
 import logging
 import psutil
+from .get_hardware_info import get_hardware_info
+from .class_object_flattener import get_flatten_keys, get_flatten_keys_list, get_flatten_values_list
 LOGGER = logging.getLogger(__name__)
 LOGGER_CPU_USAGE = logging.getLogger("cpu_usage")
 
@@ -16,12 +18,16 @@ class LogCpuGpuUsage(Thread):
 
     def run(self) -> None:
         LOGGER_CPU_USAGE.info("============== Start ================")
-        LOGGER_CPU_USAGE.info("Cores: {} Frequency: {} Mem: {} GB {}".format(
-            psutil.cpu_count(),
-            psutil.cpu_freq(),
-            psutil.virtual_memory().total / (1024 * 1024 * 1024),
-            psutil.sensors_temperatures(),
-        ))
+        obj = get_hardware_info()
+        d = get_flatten_keys(obj)
+        LOGGER_CPU_USAGE.info(get_flatten_keys_list(obj))
+        LOGGER_CPU_USAGE.info(get_flatten_values_list(obj, d))
+        # LOGGER_CPU_USAGE.info("Cores: {} Frequency: {} Mem: {} GB {}".format(
+        #     psutil.cpu_count(),
+        #     psutil.cpu_freq(),
+        #     psutil.virtual_memory().total / (1024 * 1024 * 1024),
+        #     psutil.sensors_temperatures(),
+        # ))
         LOGGER_CPU_USAGE.info("CPU Percentage, MEM Percentage")
         while True:
             LOGGER_CPU_USAGE.info("{:6.1f}, {:6.1f}".format(

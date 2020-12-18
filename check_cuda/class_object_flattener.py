@@ -25,9 +25,11 @@ def get_flatten_dict(in_dict1: Union[Dict[str, Any], List[Any]], in_key: str = N
                     ret[key_i] = v_i
                     is_empty_dict = False
                 if is_empty_dict:
+                    k = str(k)
                     key = k if in_key is None else in_key + '.' + k
                     ret[key] = k
             else:
+                k = str(k)
                 key = k if in_key is None else in_key + '.' + k
                 ret[key] = k
     elif isinstance(in_dict_or_list, list):
@@ -63,9 +65,9 @@ def get_flatten_keys(obj=None) -> Dict[str, str]:
     return ret
 
 
-def get_flatten_keys_list(obj=None, ignore_list=[]) -> List[str]:
+def get_flatten_keys_list(in_dict: Dict[str, str], ignore_list=[]) -> List[str]:
     ret = []
-    for k, v in get_flatten_keys(obj).items():
+    for k, v in in_dict.items():
         if k not in ignore_list:
             ret.append(v)
     return ret

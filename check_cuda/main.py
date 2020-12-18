@@ -77,27 +77,27 @@ def main():
     LOGGER.info("=============================================")
     print("Using session {}".format(get_session_folder()))
 
-    # try:
-    #     l = log_cpu_gpu_usage.LogCpuGpuUsage()
-    #     l.start()
-    #     global is_shutdown
-    #     while not is_shutdown.wait(10.0):
-    #         continue
-    #     l.stop()
-    # except Exception as e:
-    #     LOGGER.exception(e)
-    #     # LOGGER.fatal(e)
-    #     raise_unhandled_exeception_error()
-
-    try:        
+    try:
         global is_shutdown
-        while not is_shutdown.wait(1.0):
-            get_hardware_info()
+        l = log_cpu_gpu_usage.LogCpuGpuUsage()
+        l.start()
+        while not is_shutdown.wait(10.0):
             continue
+        l.stop()
     except Exception as e:
         LOGGER.exception(e)
         # LOGGER.fatal(e)
         raise_unhandled_exeception_error()
+
+    # try:        
+    #     global is_shutdown
+    #     while not is_shutdown.wait(1.0):
+    #         get_hardware_info()
+    #         continue
+    # except Exception as e:
+    #     LOGGER.exception(e)
+    #     # LOGGER.fatal(e)
+    #     raise_unhandled_exeception_error()
 
     
     # from cpuinfo import get_cpu_info

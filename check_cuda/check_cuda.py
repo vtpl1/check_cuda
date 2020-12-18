@@ -13,6 +13,7 @@ from Python without resorting to nvidia-smi or a compiled Python extension.
 Author: Jan Schlüter
 """
 
+from check_cuda.data_models.nvidia_device import NvidiaDevice
 import ctypes
 import logging
 import os
@@ -74,7 +75,7 @@ class CheckCuda(object):
     def __init__(self):
         self.__is_nvml_loaded = False
         self.__cuda = None
-        self.__cuda_device_list = {}
+        self.__nvidia_device_list: List[NvidiaDevice] = {}
         # self.__processes = {}
         print("Starting NVML")
         try:
@@ -238,7 +239,7 @@ class CheckCuda(object):
                 'processes': processes,
             }
             pprint(gpu_info)
-        return self.__cuda_device_list
+        return self.__nvidia_device_list
 
     def get_cuda_info(self) -> List[CudaDevice]:
         # 1. get list of gpu
@@ -249,9 +250,9 @@ class CheckCuda(object):
                 gpu_info = self.get_gpu_info(index)
                 gpu_list.append(gpu_info)
         self.get_process_info_by_name()
-        return self.__cuda_device_list
+        return self.__nvidia_device_list
 
-    def get_cuda_info1(self) -> List[CudaDevice]:
+    def get_nvidia_gpu_info(self) -> List[NvidiaDevice]:
         if self.__cuda is None:
             libnames = ('libcuda.so', 'libcuda.dylib', 'cuda.dll')
             for libname in libnames:
@@ -362,7 +363,7 @@ class CheckCuda(object):
                                 LOGGER.error("cuMemGetInfo failed with error code %d: %s" %
                                              (result, error_str.value.decode()))
                             self.__cuda.cuCtxDetach(context)
-                        self.__cuda_device_list[i] = CudaDevice(
+                        self.__nvidia_device_list[i] = NvidiaDevice(
                             i,
                             cuda_device_name,
                             cuda_compute_capability_major,
@@ -375,7 +376,7 @@ class CheckCuda(object):
                             cuda_free_memory_mib,
                         )
 
-        return self.__cuda_device_list
+        return self.__nvidia_device_list
 
     def is_cuda_available(self) -> bool:
         return len(self.get_cuda_info()) > 0
@@ -384,6 +385,9 @@ class CheckCuda(object):
 def is_cuda_available() -> bool:
     return CheckCuda().is_cuda_available()
 
+
+def get_nvidia_device_info() -> List[NvidiaDevice]:
+    return CheckCuda().get_nvidia_gpu_info()
 
 def get_cuda_info() -> List[CudaDevice]:
     return CheckCuda().get_cuda_info()
