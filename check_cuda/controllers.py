@@ -1,34 +1,15 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""
-Outputs some information on CUDA-enabled devices on your computer,
-including current memory usage.
-
-It's a port of https://gist.github.com/f0k/0d6431e3faa60bffc788f8b4daa029b1
-from C to Python with ctypes, so it can run without compiling anything. Note
-that this is a direct translation with no attempt to make the code Pythonic.
-It's meant as a general demonstration on how to obtain CUDA device information
-from Python without resorting to nvidia-smi or a compiled Python extension.
-
-Author: Jan Schlüter
-"""
-
-from check_cuda.data_models.nvidia_device import NvidiaDevice
 import ctypes
 import logging
 import os
-import sys
-import time
-from pprint import pprint
-from typing import List
-
-import psutil
+import platform
+from typing import List, Union
 import pynvml as N
-import yaml
-from singleton_decorator import singleton
 
-from .class_object_flattener import get_flatten_keys, get_flatten_keys_list, get_flatten_values_list
-from .data_models.cuda_device import CudaDevice
+from cpuinfo import get_cpu_info
+import psutil
+from singleton_decorator.decorator import singleton
+
+from .models import CpuInfo, CpuStatus, GpuInfo, GpuStatus, ProcessStatus, SystemInfo, SystemStatus
 
 # Some constants taken from cuda.h
 CUDA_SUCCESS = 0
@@ -38,8 +19,6 @@ CU_DEVICE_ATTRIBUTE_CLOCK_RATE = 13
 CU_DEVICE_ATTRIBUTE_MEMORY_CLOCK_RATE = 36
 NOT_SUPPORTED = 'Not Supported'
 MB = 1024 * 1024
-
-LOGGER = logging.getLogger(__name__)
 
 
 def ConvertSMVer2Cores(major, minor):
@@ -70,13 +49,36 @@ def ConvertSMVer2Cores(major, minor):
     }.get((major, minor), 0)
 
 
+LOGGER = logging.getLogger(__name__)
+
+# def get_public_ip() -> str:
+#     'https://api.ipify.org?format=json'
+
+
+def get_cpu() -> CpuInfo:
+    cpu = CpuInfo()
+    try:
+        cpu_info = get_cpu_info()
+        cpu.name = cpu_info["brand_raw"]
+        cpu.frequency = cpu_info["hz_advertised_friendly"]
+        cpu.arch = cpu_info["arch"]
+        cpu.bits = cpu_info["bits"]
+        cpu.count = cpu_info["count"]
+        cpu.vendor_id = cpu_info["vendor_id_raw"]
+    except AttributeError as e:
+        LOGGER.fatal(e)
+    return cpu
+
+
+def get_system_info() -> SystemInfo:
+    return SystemInfo(host_name=platform.uname().node, os=platform.platform(), cpu=get_cpu(), gpus=get_gpu_info())
+
+
 @singleton
-class CheckCuda(object):
+class GpuInfoFromNvml(object):
     def __init__(self):
         self.__is_nvml_loaded = False
-        self.__cuda = None
-        self.__nvidia_device_list: List[NvidiaDevice] = []
-        # self.__processes = {}
+        self.__gpu_processes: List[ProcessStatus] = []
         print("Starting NVML")
         try:
             N.nvmlInit()
@@ -84,98 +86,54 @@ class CheckCuda(object):
         except Exception as e:
             print(e)
 
-    def _decode(self, b):
-        if isinstance(b, bytes):
-            return b.decode('utf-8')    # for python3, to unicode
-        return b
-
     def __del__(self):
         print("Shutting down NVML")
         if self.__is_nvml_loaded:
             N.nvmlShutdown()
 
-    def get_process_info_by_name(self, name='python3'):
-        process_list = []
-        for ps_process in psutil.process_iter():
-            name_, exe, cmdline = "", "", []
-            try:
-                name_ = ps_process.name()
-                cmdline = ps_process.cmdline()
-                exe = ps_process.exe()
-            except (psutil.AccessDenied, psutil.ZombieProcess):
-                pass
-            except psutil.NoSuchProcess:
-                continue
-            if name == name_ or cmdline[0] == name or os.path.basename(exe) == name:
-                process_list.append(self._extract_process_info(ps_process))
-        return process_list
+    def _decode(self, b):
+        if isinstance(b, bytes):
+            return b.decode('utf-8')    # for python3, to unicode
+        return b
 
-    def get_process_info(self, pid):
-        ps_process = psutil.Process(pid=pid)
-        process = self._extract_process_info(ps_process)
-        return process
-
-    def _extract_process_info(self, ps_process):
-        process = {}
-        process['username'] = ps_process.username()
-        # cmdline returns full path;,        # as in `ps -o comm`, get short cmdnames.
-        _cmdline = ps_process.cmdline()
-        if not _cmdline:
-            # sometimes, zombie or unknown (e.g. [kworker/8:2H])
-            process['command'] = '?'
-            process['full_command'] = ['?']
-        else:
-            process['command'] = os.path.basename(_cmdline[0])
-            process['full_command'] = _cmdline
-        process['cpu_percent'] = ps_process.cpu_percent() / psutil.cpu_count()
-        process['cpu_memory_usage'] = round((ps_process.memory_percent() / 100.0) * psutil.virtual_memory().total)
-        process['pid'] = ps_process.pid
-        return process
-
-    def get_gpu_info(self, index) -> List[CudaDevice]:
+    def get_gpu_status_by_gpu_id(self, index) -> Union[GpuStatus, None]:
+        gpu_status = None
         if self.__is_nvml_loaded:
+            gpu_status = GpuStatus(index=index)
             """Get one GPU information specified by nvml handle"""
             handle = N.nvmlDeviceGetHandleByIndex(index)
-            name = self._decode(N.nvmlDeviceGetName(handle))
-            uuid = self._decode(N.nvmlDeviceGetUUID(handle))
+            gpu_status.name = self._decode(N.nvmlDeviceGetName(handle))
+            gpu_status.uuid = self._decode(N.nvmlDeviceGetUUID(handle))
+            try:
+                gpu_status.temperature = N.nvmlDeviceGetTemperature(handle, N.NVML_TEMPERATURE_GPU)
+            except N.NVMLError:
+                gpu_status.temperature = None    # Not supported
+            try:
+                gpu_status.fan_speed = N.nvmlDeviceGetFanSpeed(handle)
+            except N.NVMLError:
+                gpu_status.fan_speed = None    # Not supported
+            try:
+                memory = N.nvmlDeviceGetMemoryInfo(handle)   # in Bytes
+                gpu_status.memory_used = memory.used // MB
+                gpu_status.memory_total = memory.total // MB
+            except N.NVMLError:
+                gpu_status.memory_used = None    # Not supported
+                gpu_status.memory_total = None
 
             try:
-                temperature = N.nvmlDeviceGetTemperature(handle, N.NVML_TEMPERATURE_GPU)
+                gpu_status.utilization = N.nvmlDeviceGetUtilizationRates(handle)
             except N.NVMLError:
-                temperature = None    # Not supported
-            try:
-                fan_speed = N.nvmlDeviceGetFanSpeed(handle)
-            except N.NVMLError:
-                fan_speed = None    # Not supported
-            try:
-                memory = N.nvmlDeviceGetMemoryInfo(handle)    # in Bytes
-            except N.NVMLError:
-                memory = None    # Not supported
+                gpu_status.utilization = None    # Not supported
 
             try:
-                utilization = N.nvmlDeviceGetUtilizationRates(handle)
+                gpu_status.utilization_enc = N.nvmlDeviceGetEncoderUtilization(handle)
             except N.NVMLError:
-                utilization = None    # Not supported
+                gpu_status.utilization_enc = None    # Not supported
 
             try:
-                utilization_enc = N.nvmlDeviceGetEncoderUtilization(handle)
+                gpu_status.utilization_dec = N.nvmlDeviceGetDecoderUtilization(handle)
             except N.NVMLError:
-                utilization_enc = None    # Not supported
-
-            try:
-                utilization_dec = N.nvmlDeviceGetDecoderUtilization(handle)
-            except N.NVMLError:
-                utilization_dec = None    # Not supported
-
-            try:
-                power = N.nvmlDeviceGetPowerUsage(handle)
-            except N.NVMLError:
-                power = None
-
-            try:
-                power_limit = N.nvmlDeviceGetEnforcedPowerLimit(handle)
-            except N.NVMLError:
-                power_limit = None
+                gpu_status.utilization_dec = None    # Not supported
 
             try:
                 nv_comp_processes = N.nvmlDeviceGetComputeRunningProcesses(handle)
@@ -185,11 +143,10 @@ class CheckCuda(object):
                 nv_graphics_processes = N.nvmlDeviceGetGraphicsRunningProcesses(handle)
             except N.NVMLError:
                 nv_graphics_processes = None    # Not supported
-
             if nv_comp_processes is None and nv_graphics_processes is None:
                 processes = None
             else:
-                processes = []
+                self.__gpu_processes.clear()
                 nv_comp_processes = nv_comp_processes or []
                 nv_graphics_processes = nv_graphics_processes or []
                 # A single process might run in both of graphics and compute mode,
@@ -200,59 +157,41 @@ class CheckCuda(object):
                         continue
                     seen_pids.add(nv_process.pid)
                     try:
-                        process = self.get_process_info(nv_process.pid)
+                        process = get_process_status_by_pid(nv_process.pid)
                         # Bytes to MBytes
                         # if drivers are not TTC this will be None.
                         usedmem = nv_process.usedGpuMemory // MB if \
                             nv_process.usedGpuMemory else None
-                        process['gpu_memory_usage'] = usedmem
-                        processes.append(process)
+                        process.gpu_memory_usage_mib = usedmem
+                        process.gpu_id = index
+                        self.__gpu_processes.append(process)
                     except psutil.NoSuchProcess:
                         # TODO: add some reminder for NVML broken context
                         # e.g. nvidia-smi reset  or  reboot the system
                         pass
+        return gpu_status
 
-                # TODO: Do not block if full process info is not requested
-                # time.sleep(0.1)
-                # for process in processes:
-                #     pid = process['pid']
-                #     cache_process = self.__processes[pid]
-                #     process['cpu_percent'] = cache_process.cpu_percent()
-            gpu_info = {
-                'index': index,
-                'uuid': uuid,
-                'name': name,
-                'temperature': temperature,
-                'fan_speed': fan_speed,
-                'utilization_gpu': utilization.gpu if utilization else None,
-                'utilization_enc': utilization_enc[0] if utilization_enc else None,
-                'utilization_dec': utilization_dec[0] if utilization_dec else None,
-                'power_draw': power // 1000 if power is not None else None,
-                'enforced_power_limit': power_limit // 1000 if power_limit is not None else None,
-            # Convert bytes into MBytes
-                'memory_used': memory.used // MB if memory else None,
-                'memory_total': memory.total // MB if memory else None,
-                'processes': processes,
-            }
-            pprint(gpu_info)
+    def get_process_status_running_on_gpus(self) -> List[ProcessStatus]:
+        return self.__gpu_processes
 
-            d = get_flatten_keys(gpu_info)
-            LOGGER.info(get_flatten_keys_list(d))
-            LOGGER.info(get_flatten_values_list(gpu_info, d))
-        return self.__nvidia_device_list
-
-    def get_cuda_info(self) -> List[CudaDevice]:
-        # 1. get list of gpu
+    def get_gpu_status(self) -> List[GpuStatus]:
         gpu_list = []
         if self.__is_nvml_loaded:
             device_count = N.nvmlDeviceGetCount()
             for index in range(device_count):
-                gpu_info = self.get_gpu_info(index)
-                gpu_list.append(gpu_info)
-        self.get_process_info_by_name()
-        return self.__nvidia_device_list
+                gpu_status = self.get_gpu_status_by_gpu_id(index)
+                if gpu_status:
+                    gpu_list.append(gpu_status)
+        return gpu_list
 
-    def get_nvidia_gpu_info(self) -> List[NvidiaDevice]:
+
+@singleton
+class GpuInfoFromCudaLib:
+    def __init__(self):
+        self.__cuda = None
+        self.__nvidia_device_list: List[GpuInfo] = []
+
+    def get_gpu_info(self) -> List[GpuInfo]:
         if self.__cuda is None:
             libnames = ('libcuda.so', 'libcuda.dylib', 'cuda.dll')
             for libname in libnames:
@@ -363,7 +302,7 @@ class CheckCuda(object):
                                 LOGGER.error("cuMemGetInfo failed with error code %d: %s" %
                                              (result, error_str.value.decode()))
                             self.__cuda.cuCtxDetach(context)
-                        self.__nvidia_device_list.append(NvidiaDevice(
+                        self.__nvidia_device_list.append(GpuInfo(
                             i,
                             cuda_device_name,
                             cuda_compute_capability_major,
@@ -378,17 +317,71 @@ class CheckCuda(object):
 
         return self.__nvidia_device_list
 
-    def is_cuda_available(self) -> bool:
-        return len(self.get_cuda_info()) > 0
+
+def get_gpu_info() -> List[GpuInfo]:
+    return GpuInfoFromCudaLib().get_gpu_info()
 
 
-def is_cuda_available() -> bool:
-    return CheckCuda().is_cuda_available()
+def get_gpu_Status() -> List[GpuStatus]:
+    return GpuInfoFromNvml().get_gpu_status()
 
 
-def get_nvidia_device_info() -> List[NvidiaDevice]:
-    CheckCuda().get_cuda_info()
-    return CheckCuda().get_nvidia_gpu_info()
+def get_process_status_by_pid(pid) -> ProcessStatus:
+    ps_process = psutil.Process(pid=pid)
+    process = _extract_process_info(ps_process)
+    return process
 
-def get_cuda_info() -> List[CudaDevice]:
-    return CheckCuda().get_cuda_info()
+
+def get_process_status_by_name(name='python3') -> List[ProcessStatus]:
+    process_list = []
+    for ps_process in psutil.process_iter():
+        name_, exe, cmdline = "", "", []
+        try:
+            name_ = ps_process.name()
+            cmdline = ps_process.cmdline()
+            exe = ps_process.exe()
+        except (psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+        except psutil.NoSuchProcess:
+            continue
+        if name == name_ or cmdline[0] == name or os.path.basename(exe) == name:
+            process_list.append(_extract_process_info(ps_process))
+    return process_list
+
+def get_process_status_running_on_gpus() -> List[ProcessStatus]:
+    return GpuInfoFromNvml().get_process_status_running_on_gpus()
+
+def get_process_status() -> List[ProcessStatus]:
+    ret = get_process_status_running_on_gpus()
+    if not len(ret):
+        ret = get_process_status_by_name()
+    return ret
+
+def _extract_process_info(ps_process) -> ProcessStatus:
+    process = ProcessStatus()
+    process.username = ps_process.username()
+    # cmdline returns full path;,        # as in `ps -o comm`, get short cmdnames.
+    _cmdline = ps_process.cmdline()
+    if not _cmdline:
+        # sometimes, zombie or unknown (e.g. [kworker/8:2H])
+        process.command = '?'
+        process.full_command = ['?']
+    else:
+        process.command = os.path.basename(_cmdline[0])
+        process.full_command = _cmdline
+    process.cpu_percent = ps_process.cpu_percent() / psutil.cpu_count()
+    process.cpu_memory_usage = round((ps_process.memory_percent() / 100.0) *
+                                     psutil.virtual_memory().total // MB)
+    process.pid = ps_process.pid
+    return process
+
+
+def get_cpu_status() -> CpuStatus:
+    return CpuStatus(cpu_percent=psutil.cpu_percent(),
+                     cpu_memory_usage_percent=psutil.virtual_memory().percent)
+
+def get_gpu_status() -> List[GpuStatus]:
+    return GpuInfoFromNvml().get_gpu_status()
+
+def get_system_status() -> SystemStatus:
+    return SystemStatus(cpu=get_cpu_status(), gpus=get_gpu_status(), processes=get_process_status())

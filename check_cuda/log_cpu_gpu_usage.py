@@ -1,8 +1,13 @@
-from threading import Thread, Event
 import logging
+from threading import Event, Thread
+
 import psutil
-from .get_hardware_info import get_hardware_info
-from .class_object_flattener import get_flatten_keys, get_flatten_keys_list, get_flatten_values_list
+
+from .class_object_flattener import (get_flatten_keys, get_flatten_keys_list,
+                                     get_flatten_values_list)
+from . import controllers
+from .controllers import get_system_info, get_system_status
+
 LOGGER = logging.getLogger(__name__)
 LOGGER_CPU_USAGE = logging.getLogger("cpu_usage")
 
@@ -11,6 +16,7 @@ class LogCpuGpuUsage(Thread):
     """
     Log CPU, GPU and memory usage
     """
+
     def __init__(self):
         self.__is_stop = Event()
         self.__is_already_shutting_down = False
@@ -19,23 +25,18 @@ class LogCpuGpuUsage(Thread):
     def run(self) -> None:
         LOGGER_CPU_USAGE.info("============== Start ================")
 
-
-        obj = get_hardware_info()
+        obj = controllers.get_system_info()
         d = get_flatten_keys(obj)
         LOGGER.info(get_flatten_keys_list(d))
         LOGGER.info(get_flatten_values_list(obj, d))
-        # LOGGER_CPU_USAGE.info("Cores: {} Frequency: {} Mem: {} GB {}".format(
-        #     psutil.cpu_count(),
-        #     psutil.cpu_freq(),
-        #     psutil.virtual_memory().total / (1024 * 1024 * 1024),
-        #     psutil.sensors_temperatures(),
-        # ))
-        LOGGER_CPU_USAGE.info("CPU Percentage, MEM Percentage")
+        obj = controllers.get_system_status()
+        d = get_flatten_keys(obj)
+
+        LOGGER_CPU_USAGE.info(get_flatten_keys_list(d))
+        LOGGER_CPU_USAGE.info(get_flatten_values_list(obj, d))
         while True:
-            LOGGER_CPU_USAGE.info("{:6.1f}, {:6.1f}".format(
-                psutil.cpu_percent(),
-                psutil.virtual_memory().percent,
-            ))
+            obj = controllers.get_system_status()
+            LOGGER_CPU_USAGE.info(get_flatten_values_list(obj, d))
             if self.__is_stop.wait(10.0):
                 break
             else:

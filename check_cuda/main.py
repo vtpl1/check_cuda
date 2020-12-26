@@ -1,16 +1,15 @@
+import codecs
 import logging
 import logging.config
 import os
 import shutil
-import codecs
 import signal
 import threading
 
 import yaml
 
-from .get_hardware_info import get_hardware_info
+from . import controllers, log_cpu_gpu_usage
 from .utils import get_session_folder
-from . import log_cpu_gpu_usage
 
 LOGGER = logging.getLogger(__name__)
 
@@ -32,6 +31,7 @@ def setup_logging(default_path='logging.yaml', default_level=logging.INFO, env_k
 
     # logging.basicConfig(level=default_level)
 
+
 def read(rel_path):
     here = os.path.abspath(os.path.dirname(__file__))
     # intentionally *not* adding an encoding option to open, See:
@@ -42,6 +42,7 @@ def read(rel_path):
 
 def get_version():
     return read("VERSION")
+
 
 is_shutdown = threading.Event()
 
@@ -77,6 +78,9 @@ def main():
     LOGGER.info("=============================================")
     print("Using session {}".format(get_session_folder()))
 
+    LOGGER.info(controllers.get_system_info())
+    LOGGER.info(controllers.get_system_status())
+
     try:
         global is_shutdown
         l = log_cpu_gpu_usage.LogCpuGpuUsage()
@@ -89,25 +93,6 @@ def main():
         # LOGGER.fatal(e)
         raise_unhandled_exeception_error()
 
-    # try:        
-    #     global is_shutdown
-    #     while not is_shutdown.wait(1.0):
-    #         get_hardware_info()
-    #         continue
-    # except Exception as e:
-    #     LOGGER.exception(e)
-    #     # LOGGER.fatal(e)
-    #     raise_unhandled_exeception_error()
-
-    
-    # from cpuinfo import get_cpu_info
-    # x = get_cpu_info()
-    # print(x, "------------------------------------")
-    # print(x['brand_raw'])
-    # print(id(CheckCuda()), CheckCuda().is_cuda_available())
-    # print(id(CheckCuda()), CheckCuda().is_cuda_available())
-    # print(id(CheckCuda()), CheckCuda().is_cuda_available())
-    # print(id(CheckCuda()), CheckCuda().is_cuda_available())
     LOGGER.info("=============================================")
     LOGGER.info("              Shutdown complete {} {}               ".format(__name__, get_version()))
     LOGGER.info("=============================================")

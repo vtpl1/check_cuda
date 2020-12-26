@@ -28,7 +28,7 @@
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 	"runArgs": [
-		"--gpus=all",
+		// "--gpus=all",
 		// "--network=host",
 		"-e",
 		"DISPLAY=${env:DISPLAY}",
