@@ -9,7 +9,7 @@ from . import controllers
 from .controllers import get_system_info, get_system_status
 
 LOGGER = logging.getLogger(__name__)
-LOGGER_CPU_USAGE = logging.getLogger("cpu_usage")
+LOGGER_CPU_USAGE = logging.getLogger(__name__)
 
 
 class LogCpuGpuUsage(Thread):

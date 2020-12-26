@@ -23,7 +23,9 @@ def setup_logging(default_path='logging.yaml', default_level=logging.INFO, env_k
     # if value:
     #     path = value
     if not os.path.exists(path):
-        shutil.copy('check_cuda/logging.yaml', path)
+        src_path = os.path.abspath(os.path.dirname(__file__)) + os.path.sep + 'logging.yaml'
+        print("####### Copying from %s" % src_path)
+        shutil.copy(src_path, path)
 
     with open(path, 'rt') as f:
         config = yaml.safe_load(f.read())
