@@ -55,25 +55,6 @@ LOGGER = logging.getLogger(__name__)
 #     'https://api.ipify.org?format=json'
 
 
-def get_cpu() -> CpuInfo:
-    cpu = CpuInfo()
-    try:
-        cpu_info = get_cpu_info()
-        cpu.name = cpu_info["brand_raw"]
-        cpu.frequency = cpu_info["hz_advertised_friendly"]
-        cpu.arch = cpu_info["arch"]
-        cpu.bits = cpu_info["bits"]
-        cpu.count = cpu_info["count"]
-        cpu.vendor_id = cpu_info["vendor_id_raw"]
-    except AttributeError as e:
-        LOGGER.fatal(e)
-    return cpu
-
-
-def get_system_info() -> SystemInfo:
-    return SystemInfo(host_name=platform.uname().node, os=platform.platform(), cpu=get_cpu(), gpus=get_gpu_info())
-
-
 @singleton
 class GpuInfoFromNvml(object):
     def __init__(self):
@@ -317,15 +298,6 @@ class GpuInfoFromCudaLib:
 
         return self.__nvidia_device_list
 
-
-def get_gpu_info() -> List[GpuInfo]:
-    return GpuInfoFromCudaLib().get_gpu_info()
-
-
-def get_gpu_Status() -> List[GpuStatus]:
-    return GpuInfoFromNvml().get_gpu_status()
-
-
 def get_process_status_by_pid(pid) -> ProcessStatus:
     ps_process = psutil.Process(pid=pid)
     process = _extract_process_info(ps_process)
@@ -351,12 +323,6 @@ def get_process_status_by_name(name='python3') -> List[ProcessStatus]:
 def get_process_status_running_on_gpus() -> List[ProcessStatus]:
     return GpuInfoFromNvml().get_process_status_running_on_gpus()
 
-def get_process_status() -> List[ProcessStatus]:
-    ret = get_process_status_running_on_gpus()
-    if not len(ret):
-        ret = get_process_status_by_name()
-    return ret
-
 def _extract_process_info(ps_process) -> ProcessStatus:
     process = ProcessStatus()
     process.username = ps_process.username()
@@ -375,6 +341,11 @@ def _extract_process_info(ps_process) -> ProcessStatus:
     process.pid = ps_process.pid
     return process
 
+def get_process_status() -> List[ProcessStatus]:
+    ret = get_process_status_running_on_gpus()
+    if not len(ret):
+        ret = get_process_status_by_name()
+    return ret
 
 def get_cpu_status() -> CpuStatus:
     return CpuStatus(cpu_percent=psutil.cpu_percent(),
@@ -383,5 +354,26 @@ def get_cpu_status() -> CpuStatus:
 def get_gpu_status() -> List[GpuStatus]:
     return GpuInfoFromNvml().get_gpu_status()
 
+
+def get_gpu_info() -> List[GpuInfo]:
+    return GpuInfoFromCudaLib().get_gpu_info()
+
 def get_system_status() -> SystemStatus:
     return SystemStatus(cpu=get_cpu_status(), gpus=get_gpu_status(), processes=get_process_status())
+
+def get_cpu() -> CpuInfo:
+    cpu = CpuInfo()
+    try:
+        cpu_info = get_cpu_info()
+        cpu.name = cpu_info["brand_raw"]
+        cpu.frequency = cpu_info["hz_advertised_friendly"]
+        cpu.arch = cpu_info["arch"]
+        cpu.bits = cpu_info["bits"]
+        cpu.count = cpu_info["count"]
+        cpu.vendor_id = cpu_info["vendor_id_raw"]
+    except AttributeError as e:
+        LOGGER.fatal(e)
+    return cpu
+
+def get_system_info() -> SystemInfo:
+    return SystemInfo(host_name=platform.uname().node, os=platform.platform(), cpu=get_cpu(), gpus=get_gpu_info())
