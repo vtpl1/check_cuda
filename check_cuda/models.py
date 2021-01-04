@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Tuple
+
 
 @dataclass
 class CpuInfo:
@@ -50,6 +51,7 @@ class CpuStatus:
     cpu_percent: float = 0.0
     cpu_memory_usage_percent: float = 0.0
 
+
 @dataclass
 class GpuStatus:
     """
@@ -67,6 +69,7 @@ class GpuStatus:
     enforced_power_limit: int = None
     memory_used: int = None
     memory_total: int = None
+
 
 @dataclass
 class ProcessStatus:
@@ -91,3 +94,20 @@ class SystemStatus:
     cpu: CpuStatus
     gpus: List[GpuStatus] = field(default_factory=list)
     processes: List[ProcessStatus] = field(default_factory=list)
+
+
+@dataclass
+class ModelPerChannel:
+    """
+    docstring
+    """
+    model_id: Tuple
+    memory: int = 0
+    max_fps: float = 0.0
+
+
+@dataclass
+class ModelPerGpu:
+    """
+    docstring
+    """
