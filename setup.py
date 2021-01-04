@@ -16,16 +16,17 @@ def read(rel_path):
 def get_version():
     return read("check_cuda/VERSION")
 
+def get_install_requires():
+    lines = []
+    with open('requirements.prod.txt','r') as f:
+        lines = f.readlines()
+    return [line.strip() for line in lines]
 
 setup(
     # dependency_links=[
     #     'git+https://github.com/vtpl1/singleton_decorator.git@master#egg=singleton-decorator'
     # ],
-    install_requires=[
-        'singleton_decorator@git+https://github.com/vtpl1/singleton_decorator.git', 'py-cpuinfo', 'PyYAML',
-        'dataclasses',
-        'psutil', 'pynvml'
-    ],
+    install_requires=get_install_requires(),
     name="check-cuda",
     version=get_version(),
     fullname="Get NVIDIA GPU devices",

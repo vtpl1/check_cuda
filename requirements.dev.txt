@@ -1,0 +1,12 @@
+cmake
+autopep8
+black
+yapf
+bandit
+flake8
+mypy
+pycodestyle
+pydocstyle
+pylint
+rope
+bump2version

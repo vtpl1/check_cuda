@@ -1,7 +1,2 @@
-pylint
-bump2version
-yapf
-pyyaml
-py-cpuinfo
-dataclasses
-git+https://github.com/vtpl1/singleton_decorator.git
+-r requirements.dev.txt
+-r requirements.prod.txt
