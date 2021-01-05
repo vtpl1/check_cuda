@@ -325,9 +325,18 @@ def get_process_status_running_on_gpus() -> List[ProcessStatus]:
 
 def _extract_process_info(ps_process) -> ProcessStatus:
     process = ProcessStatus()
-    process.username = ps_process.username()
+    try:
+        process.username = ps_process.username()
+    except psutil.AccessDenied:
+        pass
+    
     # cmdline returns full path;,        # as in `ps -o comm`, get short cmdnames.
-    _cmdline = ps_process.cmdline()
+    _cmdline = None
+    try:
+        _cmdline = ps_process.cmdline()
+    except psutil.AccessDenied:
+        pass
+
     if not _cmdline:
         # sometimes, zombie or unknown (e.g. [kworker/8:2H])
         process.command = '?'
@@ -335,9 +344,12 @@ def _extract_process_info(ps_process) -> ProcessStatus:
     else:
         process.command = os.path.basename(_cmdline[0])
         process.full_command = _cmdline
-    process.cpu_percent = ps_process.cpu_percent() / psutil.cpu_count()
-    process.cpu_memory_usage = round((ps_process.memory_percent() / 100.0) *
-                                     psutil.virtual_memory().total // MB)
+    try:
+        process.cpu_percent = ps_process.cpu_percent() / psutil.cpu_count()
+        process.cpu_memory_usage = round((ps_process.memory_percent() / 100.0) *
+                                        psutil.virtual_memory().total // MB)
+    except psutil.AccessDenied:
+        pass
     process.pid = ps_process.pid
     return process
 

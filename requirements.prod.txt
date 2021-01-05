@@ -5,3 +5,4 @@ pyyaml
 psutil
 pynvml
 singleton_decorator@git+https://github.com/vtpl1/singleton_decorator.git
+marshmallow_dataclass

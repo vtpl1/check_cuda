@@ -1,5 +1,8 @@
 from dataclasses import dataclass, field
 from typing import List, Tuple
+from marshmallow.utils import pprint
+import yaml
+from marshmallow_dataclass import class_schema
 
 
 @dataclass
@@ -111,3 +114,17 @@ class ModelPerGpu:
     """
     docstring
     """
+
+if __name__ == "__main__":
+    c = CpuStatus()
+    g = [GpuStatus(index=0)]
+    p = [ProcessStatus()]
+    s = SystemStatus(c, g, p)
+    with open('data.yml', 'w') as outfile:
+        yaml.dump(s, outfile)
+    with open('data.yml', 'r') as infile:
+        loaded = yaml.load(infile, Loader=yaml.SafeLoader)
+        SystemStatusSchema = class_schema(SystemStatus)
+        result = SystemStatusSchema().load(loaded)
+        pprint(result)
+    
