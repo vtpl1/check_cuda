@@ -70,7 +70,7 @@ def raise_unhandled_exeception_error():
     is_shutdown.set()
 
 
-def main():
+def main1():
     signal.signal(signal.SIGINT, stop_handler)
     signal.signal(signal.SIGTERM, stop_handler)
     print("Using session {}".format(get_session_folder()))
@@ -98,3 +98,22 @@ def main():
     LOGGER.info("=============================================")
     LOGGER.info("              Shutdown complete {} {}               ".format(__name__, get_version()))
     LOGGER.info("=============================================")
+
+def main():
+    signal.signal(signal.SIGINT, stop_handler)
+    signal.signal(signal.SIGTERM, stop_handler)
+    print("Using session {}".format(get_session_folder()))
+    setup_logging()
+    LOGGER.info("=============================================")
+    LOGGER.info("              Started  {} {}               ".format(__name__, get_version()))
+    LOGGER.info("=============================================")
+    print("Using session {}".format(get_session_folder()))
+
+    controllers.get_gpu_id_for_the_channel(0, 75, 416, 416)
+    controllers.get_gpu_id_for_the_channel(0, 75, 416, 416)
+
+    controllers.get_gpu_id_for_the_channel(0, 76, 416, 416)
+    controllers.get_gpu_id_for_the_channel(0, 75, 416, 416)
+
+    controllers.get_gpu_id_for_the_channel(0, 75, 416, 416)
+    controllers.get_gpu_id_for_the_channel(0, 75, 416, 416)

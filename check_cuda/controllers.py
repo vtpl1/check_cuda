@@ -2,14 +2,16 @@ import ctypes
 import logging
 import os
 import platform
-from typing import List, Union
-import pynvml as N
+from typing import Dict, List, Union
 
-from cpuinfo import get_cpu_info
 import psutil
+import pynvml as N
+from cpuinfo import get_cpu_info
 from singleton_decorator.decorator import singleton
+import yaml
 
-from .models import CpuInfo, CpuStatus, GpuInfo, GpuStatus, ProcessStatus, SystemInfo, SystemStatus
+from .models import (ChannelAndNnModel, CpuInfo, CpuStatus, GpuInfo, GpuStatus, ModelCount, NnModel, NnModelMaxChannel, NnModelMaxChannelList, ProcessStatus,
+                     SystemInfo, SystemStatus)
 
 # Some constants taken from cuda.h
 CUDA_SUCCESS = 0
@@ -298,6 +300,7 @@ class GpuInfoFromCudaLib:
 
         return self.__nvidia_device_list
 
+
 def get_process_status_by_pid(pid) -> ProcessStatus:
     ps_process = psutil.Process(pid=pid)
     process = _extract_process_info(ps_process)
@@ -320,8 +323,10 @@ def get_process_status_by_name(name='python3') -> List[ProcessStatus]:
             process_list.append(_extract_process_info(ps_process))
     return process_list
 
+
 def get_process_status_running_on_gpus() -> List[ProcessStatus]:
     return GpuInfoFromNvml().get_process_status_running_on_gpus()
+
 
 def _extract_process_info(ps_process) -> ProcessStatus:
     process = ProcessStatus()
@@ -329,7 +334,7 @@ def _extract_process_info(ps_process) -> ProcessStatus:
         process.username = ps_process.username()
     except psutil.AccessDenied:
         pass
-    
+
     # cmdline returns full path;,        # as in `ps -o comm`, get short cmdnames.
     _cmdline = None
     try:
@@ -347,11 +352,12 @@ def _extract_process_info(ps_process) -> ProcessStatus:
     try:
         process.cpu_percent = ps_process.cpu_percent() / psutil.cpu_count()
         process.cpu_memory_usage = round((ps_process.memory_percent() / 100.0) *
-                                        psutil.virtual_memory().total // MB)
+                                         psutil.virtual_memory().total // MB)
     except psutil.AccessDenied:
         pass
     process.pid = ps_process.pid
     return process
+
 
 def get_process_status() -> List[ProcessStatus]:
     ret = get_process_status_running_on_gpus()
@@ -359,9 +365,11 @@ def get_process_status() -> List[ProcessStatus]:
         ret = get_process_status_by_name()
     return ret
 
+
 def get_cpu_status() -> CpuStatus:
     return CpuStatus(cpu_percent=psutil.cpu_percent(),
                      cpu_memory_usage_percent=psutil.virtual_memory().percent)
+
 
 def get_gpu_status() -> List[GpuStatus]:
     return GpuInfoFromNvml().get_gpu_status()
@@ -370,8 +378,10 @@ def get_gpu_status() -> List[GpuStatus]:
 def get_gpu_info() -> List[GpuInfo]:
     return GpuInfoFromCudaLib().get_gpu_info()
 
+
 def get_system_status() -> SystemStatus:
     return SystemStatus(cpu=get_cpu_status(), gpus=get_gpu_status(), processes=get_process_status())
+
 
 def get_cpu() -> CpuInfo:
     cpu = CpuInfo()
@@ -387,5 +397,63 @@ def get_cpu() -> CpuInfo:
         LOGGER.fatal(e)
     return cpu
 
+
 def get_system_info() -> SystemInfo:
     return SystemInfo(host_name=platform.uname().node, os=platform.platform(), cpu=get_cpu(), gpus=get_gpu_info())
+
+
+@singleton
+class ChannelGpuManager:
+    """
+    docstring
+    """
+    def __init__(self) -> None:
+        self.channel_to_gpu_map: Dict[ChannelAndNnModel, ModelCount] = {}
+        self.gpu_id_generator = 0
+        self.configuration_file_name = self.__class__.__name__ + ".yml"
+        self.model_list = self.__read_default_models()
+        self.number_of_gpus = len(get_gpu_info())
+
+    def __write_default_models(self) -> NnModelMaxChannelList:
+        model_list = NnModelMaxChannelList()
+        model_list.models.append(NnModelMaxChannel(key=NnModel(75, 416, 416), max_channel=2))
+        model_list.models.append(NnModelMaxChannel(key=NnModel(76, 416, 416), max_channel=3))
+
+        with open(self.configuration_file_name, 'w') as outfile:
+            yaml.dump(model_list.to_dict(), outfile)
+
+        return model_list
+
+    def __read_default_models(self) -> NnModelMaxChannelList:
+        model_list = None
+        try:
+            with open(self.configuration_file_name, 'r') as infile:
+                model_list = NnModelMaxChannelList.from_dict(yaml.safe_load(infile))
+        except FileNotFoundError:
+            pass
+        if not model_list:
+            model_list = self.__write_default_models()
+        if not len(model_list.models):
+            model_list = self.__write_default_models()
+        return model_list
+        
+
+    def get_next_gpu_id(self) -> int:
+        ret = self.gpu_id_generator
+        if not self.number_of_gpus:
+            self.gpu_id_generator = (self.gpu_id_generator + 1) % self.number_of_gpus
+        return ret
+
+    
+
+def get_gpu_id_for_the_channel(channel_id: int, purpose: int, width: int, height: int, media_tpe: int = 2) -> int:
+    candidate = ChannelAndNnModel(channel_id, NnModel(purpose, width, height))
+    if candidate in ChannelGpuManager().channel_to_gpu_map.keys():
+        x = ChannelGpuManager().channel_to_gpu_map[candidate]
+        x.count = x.count + 1
+
+    else:
+        x = ModelCount(gpu_id=ChannelGpuManager().get_next_gpu_id())
+        ChannelGpuManager().channel_to_gpu_map[candidate] = x
+    print(candidate, x)
+    return x.gpu_id
