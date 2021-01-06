@@ -186,15 +186,9 @@ class ModelPerGpu(DataClassJsonMixin):
 
 
 if __name__ == "__main__":
-<<<<<<< HEAD
     l_m = NnModelMaxChannelInfoList()
     l_m.models.append(NnModelMaxChannelInfo(key=NnModelInfo(75, 416, 416), max_channel=2))
     l_m.models.append(NnModelMaxChannelInfo(key=NnModelInfo(76, 416, 416), max_channel=3))
-=======
-    l_m = NnModelMaxChannelList()
-    l_m.models.append(NnModelMaxChannel(key=NnModelInfo(75, 416, 416), max_channel=2))
-    l_m.models.append(NnModelMaxChannel(key=NnModelInfo(76, 416, 416), max_channel=3))
->>>>>>> 1afb9ff7f3e71825b10e627f1229ce9a6ae65ae4
 
     # c = CpuStatus()
     # g = [GpuStatus(index=0)]

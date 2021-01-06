@@ -44,12 +44,12 @@ class LogCpuGpuUsage(Thread):
             s = f"{obj.cpu.cpu_percent},{obj.cpu.cpu_memory_usage_percent},"
             i = 0
             for gpu in obj.gpus:
-                s += f"#{str(i)},{str(gpu.index)},{str(gpu.uuid)},{str(gpu.name)},{str(gpu.utilization_gpu)},{str(gpu.utilization_enc)},{str(gpu.utilization_dec)},{str(gpu.memory_used)},{str(gpu.memory_total)},"
+                s += f"#GPU{str(i)},{str(gpu.index)},{str(gpu.uuid)},{str(gpu.name)},{str(gpu.utilization_gpu)},{str(gpu.utilization_enc)},{str(gpu.utilization_dec)},{str(gpu.memory_used)},{str(gpu.memory_total)},"
                 i += 1
 
             i = 0
             for process in obj.processes:
-                s += f"#{str(i)},{str(process.pid)},{str(process.command)},{str(process.cpu_percent)},{str(process.cpu_memory_usage_mib)},{str(process.gpu_id)},{str(process.gpu_memory_usage_mib)},"
+                s += f"#PROCESS{str(i)},{str(process.pid)},{str(process.command)},{str(process.cpu_percent)},{str(process.cpu_memory_usage_mib)},{str(process.gpu_id)},{str(process.gpu_memory_usage_mib)},"
                 i += 1            
             LOGGER_CPU_USAGE.info(s)
             if self.__is_stop.wait(1.0):
