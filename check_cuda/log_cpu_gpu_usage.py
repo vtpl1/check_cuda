@@ -30,14 +30,13 @@ class LogCpuGpuUsage(Thread):
         LOGGER.info(get_flatten_keys_list(d))
         LOGGER.info(get_flatten_values_list(obj, d))
         obj = controllers.get_system_status()
-        d = get_flatten_keys(obj)
-
-        LOGGER_CPU_USAGE.info(get_flatten_keys_list(d))
-        LOGGER_CPU_USAGE.info(get_flatten_values_list(obj, d))
+        d = get_flatten_keys(obj)        
+        LOGGER_CPU_USAGE.info(','.join(map(str, get_flatten_keys_list(d))))
+        LOGGER_CPU_USAGE.info(','.join(map(str, get_flatten_values_list(obj, d))))
         while True:
             obj = controllers.get_system_status()
-            LOGGER_CPU_USAGE.info(get_flatten_values_list(obj, d))
-            if self.__is_stop.wait(10.0):
+            LOGGER_CPU_USAGE.info(','.join(map(str, get_flatten_values_list(obj, d))))
+            if self.__is_stop.wait(1.0):
                 break
             else:
                 continue

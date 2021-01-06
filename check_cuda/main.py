@@ -70,7 +70,7 @@ def raise_unhandled_exeception_error():
     is_shutdown.set()
 
 
-def main1():
+def main():
     signal.signal(signal.SIGINT, stop_handler)
     signal.signal(signal.SIGTERM, stop_handler)
     print("Using session {}".format(get_session_folder()))
@@ -99,7 +99,7 @@ def main1():
     LOGGER.info("              Shutdown complete {} {}               ".format(__name__, get_version()))
     LOGGER.info("=============================================")
 
-def main():
+def main1():
     signal.signal(signal.SIGINT, stop_handler)
     signal.signal(signal.SIGTERM, stop_handler)
     print("Using session {}".format(get_session_folder()))
