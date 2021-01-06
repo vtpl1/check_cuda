@@ -23,23 +23,42 @@ class LogCpuGpuUsage(Thread):
         super().__init__()
 
     def run(self) -> None:
-        LOGGER_CPU_USAGE.info("============== Start ================")
-
         obj = controllers.get_system_info()
-        d = get_flatten_keys(obj)
-        LOGGER.info(get_flatten_keys_list(d))
-        LOGGER.info(get_flatten_values_list(obj, d))
+        LOGGER_CPU_USAGE.info(f"============== Start ================ {obj.host_name}, {obj.os}")
+
         obj = controllers.get_system_status()
-        d = get_flatten_keys(obj)        
-        LOGGER_CPU_USAGE.info(','.join(map(str, get_flatten_keys_list(d))))
-        LOGGER_CPU_USAGE.info(','.join(map(str, get_flatten_values_list(obj, d))))
-        while True:
-            obj = controllers.get_system_status()
-            LOGGER_CPU_USAGE.info(','.join(map(str, get_flatten_values_list(obj, d))))
+        header = "cpu_percent,cpu_memory_usage_percent,"
+        i = 0
+        for gpu in obj.gpus:
+            header += f"#GPU{str(i)},index,uuid,name,utilization_gpu,utilization_enc,utilization_dec,memory_used,memory_total,"
+            i += 1
+
+        i = 0
+        for process in obj.processes:
+            header += f"#PROCESS{str(i)},pid,command,cpu_percent,cpu_memory_usage_mib,gpu_id,gpu_memory_usage_mib,"
+            i += 1
+
+
+        LOGGER_CPU_USAGE.info(header)
+        while True:            
+            s = f"{obj.cpu.cpu_percent},{obj.cpu.cpu_memory_usage_percent},"
+            i = 0
+            for gpu in obj.gpus:
+                s += f"#{str(i)},{str(gpu.index)},{str(gpu.uuid)},{str(gpu.name)},{str(gpu.utilization_gpu)},{str(gpu.utilization_enc)},{str(gpu.utilization_dec)},{str(gpu.memory_used)},{str(gpu.memory_total)},"
+                i += 1
+
+            i = 0
+            for process in obj.processes:
+                s += f"#{str(i)},{str(process.pid)},{str(process.command)},{str(process.cpu_percent)},{str(process.cpu_memory_usage_mib)},{str(process.gpu_id)},{str(process.gpu_memory_usage_mib)},"
+                i += 1            
+            LOGGER_CPU_USAGE.info(s)
             if self.__is_stop.wait(1.0):
                 break
             else:
+                obj = controllers.get_system_status()
                 continue
+            
+
         LOGGER_CPU_USAGE.info("============== End   ================")
 
     def stop(self):

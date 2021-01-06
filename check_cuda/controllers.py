@@ -10,7 +10,7 @@ from cpuinfo import get_cpu_info
 from singleton_decorator.decorator import singleton
 import yaml
 
-from .models import (ChannelAndNnModel, CpuInfo, CpuStatus, GpuInfo, GpuStatus, ModelCount, NnModel, NnModelMaxChannel, NnModelMaxChannelList, ProcessStatus,
+from .models import (ChannelAndNnModel, CpuInfo, CpuStatus, GpuInfo, GpuStatus, ModelCount, NnModelInfo, NnModelMaxChannelInfo, NnModelMaxChannelInfoList, ProcessStatus,
                      SystemInfo, SystemStatus)
 
 # Some constants taken from cuda.h
@@ -105,17 +105,29 @@ class GpuInfoFromNvml(object):
                 gpu_status.memory_total = None
 
             try:
-                gpu_status.utilization = N.nvmlDeviceGetUtilizationRates(handle)
+                utilization = N.nvmlDeviceGetUtilizationRates(handle)
+                if utilization:
+                    gpu_status.utilization_gpu = utilization.gpu
+                else:
+                    gpu_status.utilization_gpu = None
             except N.NVMLError:
-                gpu_status.utilization = None    # Not supported
+                gpu_status.utilization_gpu = None    # Not supported
 
             try:
-                gpu_status.utilization_enc = N.nvmlDeviceGetEncoderUtilization(handle)
+                utilization_enc = N.nvmlDeviceGetEncoderUtilization(handle)
+                if utilization_enc:
+                    gpu_status.utilization_enc = utilization_enc[0]
+                else:
+                    gpu_status.utilization_enc = None
             except N.NVMLError:
                 gpu_status.utilization_enc = None    # Not supported
 
             try:
-                gpu_status.utilization_dec = N.nvmlDeviceGetDecoderUtilization(handle)
+                utilization_dec = N.nvmlDeviceGetDecoderUtilization(handle)
+                if utilization_dec:
+                    gpu_status.utilization_dec = utilization_dec[0]
+                else:
+                    gpu_status.utilization_dec = None
             except N.NVMLError:
                 gpu_status.utilization_dec = None    # Not supported
 
@@ -155,6 +167,28 @@ class GpuInfoFromNvml(object):
                         pass
         return gpu_status
 
+
+    def get_gpu_info_by_gpu_id(self, index) -> Union[GpuInfo, None]:
+        gpu_info = None
+        if self.__is_nvml_loaded:
+            gpu_info = GpuInfo(gpu_id=index)
+            """Get one GPU information specified by nvml handle"""
+            handle = N.nvmlDeviceGetHandleByIndex(index)
+            gpu_info.name = self._decode(N.nvmlDeviceGetName(handle))
+            gpu_info.uuid = self._decode(N.nvmlDeviceGetUUID(handle))
+
+            try:
+                memory = N.nvmlDeviceGetMemoryInfo(handle)   # in Bytes                
+                gpu_info.free_memory_mib = (memory.total - memory.used) // MB
+                gpu_info.total_memory_mib = memory.total // MB
+            except N.NVMLError:
+                gpu_info.free_memory_mib = None    # Not supported
+                gpu_info.total_memory_mib = None
+
+
+        return gpu_info
+
+
     def get_process_status_running_on_gpus(self) -> List[ProcessStatus]:
         return self.__gpu_processes
 
@@ -168,6 +202,15 @@ class GpuInfoFromNvml(object):
                     gpu_list.append(gpu_status)
         return gpu_list
 
+    def get_gpu_info(self) -> List[GpuInfo]:
+        gpu_list = []
+        if self.__is_nvml_loaded:
+            device_count = N.nvmlDeviceGetCount()
+            for index in range(device_count):
+                gpu_status = self.get_gpu_info_by_gpu_id(index)
+                if gpu_status:
+                    gpu_list.append(gpu_status)
+        return gpu_list
 
 @singleton
 class GpuInfoFromCudaLib:
@@ -378,7 +421,7 @@ def get_gpu_status() -> List[GpuStatus]:
 
 
 def get_gpu_info() -> List[GpuInfo]:
-    return GpuInfoFromCudaLib().get_gpu_info()
+    return GpuInfoFromNvml().get_gpu_info()
 
 
 def get_system_status() -> SystemStatus:
@@ -416,21 +459,21 @@ class ChannelGpuManager:
         self.model_list = self.__read_default_models()
         self.number_of_gpus = len(get_gpu_status())
 
-    def __write_default_models(self) -> NnModelMaxChannelList:
-        model_list = NnModelMaxChannelList()
-        model_list.models.append(NnModelMaxChannel(key=NnModel(75, 416, 416), max_channel=2))
-        model_list.models.append(NnModelMaxChannel(key=NnModel(76, 416, 416), max_channel=3))
+    def __write_default_models(self) -> NnModelMaxChannelInfoList:
+        model_list = NnModelMaxChannelInfoList()
+        model_list.models.append(NnModelMaxChannelInfo(key=NnModelInfo(75, 416, 416), max_channel=2))
+        model_list.models.append(NnModelMaxChannelInfo(key=NnModelInfo(76, 416, 416), max_channel=3))
 
         with open(self.configuration_file_name, 'w') as outfile:
             yaml.dump(model_list.to_dict(), outfile)
 
         return model_list
 
-    def __read_default_models(self) -> NnModelMaxChannelList:
+    def __read_default_models(self) -> NnModelMaxChannelInfoList:
         model_list = None
         try:
             with open(self.configuration_file_name, 'r') as infile:
-                model_list = NnModelMaxChannelList.from_dict(yaml.safe_load(infile))
+                model_list = NnModelMaxChannelInfoList.from_dict(yaml.safe_load(infile))
         except FileNotFoundError:
             pass
         if not model_list:
@@ -449,7 +492,7 @@ class ChannelGpuManager:
     
 
 def get_gpu_id_for_the_channel(channel_id: int, purpose: int, width: int, height: int, media_tpe: int = 2) -> int:
-    candidate = ChannelAndNnModel(channel_id, NnModel(purpose, width, height))
+    candidate = ChannelAndNnModel(channel_id, NnModelInfo(purpose, width, height))
     if candidate in ChannelGpuManager().channel_to_gpu_map.keys():
         x = ChannelGpuManager().channel_to_gpu_map[candidate]
         x.count = x.count + 1
