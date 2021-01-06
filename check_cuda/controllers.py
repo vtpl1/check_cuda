@@ -192,9 +192,10 @@ class GpuInfoFromNvml(object):
         return self.__gpu_processes
 
     def get_gpu_status(self) -> List[GpuStatus]:
-        gpu_list = []
+        gpu_list = []        
         if self.__is_nvml_loaded:
             device_count = N.nvmlDeviceGetCount()
+            self.__gpu_processes.clear()
             for index in range(device_count):
                 gpu_status = self.get_gpu_status_by_gpu_id(index)
                 if gpu_status:
@@ -203,7 +204,6 @@ class GpuInfoFromNvml(object):
 
     def get_gpu_info(self) -> List[GpuInfo]:
         gpu_list = []
-        self.__gpu_processes.clear()
         if self.__is_nvml_loaded:
             device_count = N.nvmlDeviceGetCount()
             for index in range(device_count):
