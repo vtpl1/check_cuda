@@ -109,14 +109,32 @@ class SystemStatus(DataClassJsonMixin):
 
 @dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass(unsafe_hash=True)
-class NnModel(DataClassJsonMixin):
+class NnModelInfo(DataClassJsonMixin):
     """
     docstring
     """
     purpose: int
     width: int
     height: int
+    max_fps: int
+    memory: int
 
+@dataclass_json(letter_case=LetterCase.CAMEL)
+@dataclass
+class NnModelStatus(DataClassJsonMixin):
+    """
+    docstring
+    """
+    key: NnModelInfo
+    assigned_group_fps: int
+    number_of_assigned_channels: int
+    gpu_id: int
+    channel_list: List[int] = field(default_factory=list)
+    assigned_group_id_list: List[int] = field(default_factory=list)
+     
+    # max_channel: int
+    # max_memory: int = 0
+    # max_fps: float = 0.0
 
 @dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass
@@ -124,7 +142,7 @@ class NnModelMaxChannel(DataClassJsonMixin):
     """
     docstring
     """
-    key: NnModel
+    key: NnModelInfo
     max_channel: int
     max_memory: int = 0
     max_fps: float = 0.0
@@ -143,7 +161,7 @@ class ChannelAndNnModel(DataClassJsonMixin):
     docstring
     """
     channel_id: int
-    model_id: NnModel
+    model_id: NnModelInfo
 
 
 @dataclass_json(letter_case=LetterCase.CAMEL)
@@ -167,8 +185,8 @@ class ModelPerGpu(DataClassJsonMixin):
 
 if __name__ == "__main__":
     l_m = NnModelMaxChannelList()
-    l_m.models.append(NnModelMaxChannel(key=NnModel(75, 416, 416), max_channel=2))
-    l_m.models.append(NnModelMaxChannel(key=NnModel(76, 416, 416), max_channel=3))
+    l_m.models.append(NnModelMaxChannel(key=NnModelInfo(75, 416, 416), max_channel=2))
+    l_m.models.append(NnModelMaxChannel(key=NnModelInfo(76, 416, 416), max_channel=3))
 
     # c = CpuStatus()
     # g = [GpuStatus(index=0)]
