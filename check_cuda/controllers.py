@@ -396,7 +396,7 @@ def _extract_process_info(ps_process) -> ProcessStatus:
         process.full_command = _cmdline
     try:
         process.cpu_percent = ps_process.cpu_percent() / psutil.cpu_count()
-        process.cpu_memory_usage = round((ps_process.memory_percent() / 100.0) *
+        process.cpu_memory_usage_mib = round((ps_process.memory_percent() / 100.0) *
                                          psutil.virtual_memory().total // MB)
     except psutil.AccessDenied:
         pass
