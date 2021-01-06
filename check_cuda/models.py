@@ -183,25 +183,3 @@ class ModelPerGpu(DataClassJsonMixin):
     """
     docstring
     """
-
-
-if __name__ == "__main__":
-    l_m = NnModelMaxChannelInfoList()
-    l_m.models.append(NnModelMaxChannelInfo(key=NnModelInfo(75, 416, 416), max_channel=2))
-    l_m.models.append(NnModelMaxChannelInfo(key=NnModelInfo(76, 416, 416), max_channel=3))
-
-    # c = CpuStatus()
-    # g = [GpuStatus(index=0)]
-    # p = [ProcessStatus()]
-    # s = SystemStatus(c, g, p)
-    # x = s.to_dict()
-    with open('data.yml', 'w') as outfile:
-        yaml.dump(l_m.to_dict(), outfile)
-
-    with open('data.yml', 'r') as infile:
-        loaded = yaml.safe_load(infile)
-
-        result1 = NnModelMaxChannelInfoList.from_dict(loaded)
-        print("MONOTOSH: ", type(result1))
-        assert(isinstance(result1, NnModelMaxChannelInfoList))
-        pprint(result1)
