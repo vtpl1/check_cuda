@@ -142,7 +142,6 @@ class GpuInfoFromNvml(object):
             if nv_comp_processes is None and nv_graphics_processes is None:
                 processes = None
             else:
-                self.__gpu_processes.clear()
                 nv_comp_processes = nv_comp_processes or []
                 nv_graphics_processes = nv_graphics_processes or []
                 # A single process might run in both of graphics and compute mode,
@@ -204,6 +203,7 @@ class GpuInfoFromNvml(object):
 
     def get_gpu_info(self) -> List[GpuInfo]:
         gpu_list = []
+        self.__gpu_processes.clear()
         if self.__is_nvml_loaded:
             device_count = N.nvmlDeviceGetCount()
             for index in range(device_count):
