@@ -412,7 +412,7 @@ class ChannelGpuManager:
         self.gpu_id_generator = 0
         self.configuration_file_name = self.__class__.__name__ + ".yml"
         self.model_list = self.__read_default_models()
-        self.number_of_gpus = len(get_gpu_info())
+        self.number_of_gpus = len(get_gpu_status())
 
     def __write_default_models(self) -> NnModelMaxChannelList:
         model_list = NnModelMaxChannelList()
@@ -440,7 +440,7 @@ class ChannelGpuManager:
 
     def get_next_gpu_id(self) -> int:
         ret = self.gpu_id_generator
-        if not self.number_of_gpus:
+        if self.number_of_gpus:
             self.gpu_id_generator = (self.gpu_id_generator + 1) % self.number_of_gpus
         return ret
 
