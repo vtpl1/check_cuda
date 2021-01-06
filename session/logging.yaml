@@ -6,7 +6,6 @@ formatters:
     format: "%(asctime)s - %(levelname)s - %(name)45s - %(message)s"
   simple1:
     format: "%(asctime)s, %(message)s"
-    datefmt: "%Y-%m-%d %H:%M:%S"
 
 handlers:
   console:

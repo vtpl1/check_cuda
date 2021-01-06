@@ -72,7 +72,8 @@ class GpuInfoFromNvml(object):
     def __del__(self):
         print("Shutting down NVML")
         if self.__is_nvml_loaded:
-            N.nvmlShutdown()
+            if N:
+                N.nvmlShutdown()
 
     def _decode(self, b):
         if isinstance(b, bytes):
@@ -319,8 +320,9 @@ def get_process_status_by_name(name='python3') -> List[ProcessStatus]:
             pass
         except psutil.NoSuchProcess:
             continue
-        if name == name_ or cmdline[0] == name or os.path.basename(exe) == name:
-            process_list.append(_extract_process_info(ps_process))
+        if len(cmdline):
+            if name == name_ or cmdline[0] == name or os.path.basename(exe) == name:
+                process_list.append(_extract_process_info(ps_process))
     return process_list
 
 
