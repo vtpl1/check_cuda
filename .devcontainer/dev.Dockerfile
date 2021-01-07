@@ -23,6 +23,10 @@ RUN cp -r /tmp/decord_build/Video_Codec_SDK_11.0.10/Lib/linux/stubs/x86_64/*.so 
 
 RUN cd /tmp/decord_build/ && cd decord && mkdir build && cd build && cmake .. -DUSE_CUDA=ON -DCMAKE_BUILD_TYPE=Release && make && make install && cd ../python && python3 setup.py install && rm -rf /tmp/decord_build
 
+COPY requirements.experiment.txt /tmp/pip-tmp/
+RUN pip3 --disable-pip-version-check --no-cache-dir install -r /tmp/pip-tmp/requirements.experiment.txt \
+    && rm -rf /tmp/pip-tmp
+
 ARG USERNAME=vadmin
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
