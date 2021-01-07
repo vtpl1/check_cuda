@@ -16,4 +16,4 @@ RUN groupmod --gid $USER_GID $USERNAME \
     && usermod --uid $USER_UID --gid $USER_GID $USERNAME \
     && chown -R $USER_UID:$USER_GID /home/$USERNAME
 USER vadmin
-CMD /usr/local/bin/check_cuda
+CMD ["/usr/local/bin/check_cuda"]
