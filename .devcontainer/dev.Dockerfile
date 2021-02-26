@@ -1,5 +1,5 @@
-# FROM nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04
-FROM nvcr.io/nvidia/deepstream:5.0-20.07-devel
+FROM nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04
+# FROM nvcr.io/nvidia/deepstream:5.0-20.07-devel
 #FROM ubuntu:18.04
 RUN apt update && apt install -y python3-pip python3-dev curl git ninja-build build-essential gdb
 RUN apt install -y software-properties-common
