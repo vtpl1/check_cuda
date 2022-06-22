@@ -82,38 +82,39 @@ def main():
 
     LOGGER.info(controllers.get_system_info())
     LOGGER.info(controllers.get_system_status())
-
+    l = None
     try:
         global is_shutdown
         l = log_cpu_gpu_usage.LogCpuGpuUsage()
         l.start()
         while not is_shutdown.wait(10.0):
             continue
-        l.stop()
     except Exception as e:
         LOGGER.exception(e)
         # LOGGER.fatal(e)
         raise_unhandled_exeception_error()
+    if l is not None:
+        l.stop()
 
     LOGGER.info("=============================================")
     LOGGER.info("              Shutdown complete {} {}               ".format(__name__, get_version()))
     LOGGER.info("=============================================")
 
-def main1():
-    signal.signal(signal.SIGINT, stop_handler)
-    signal.signal(signal.SIGTERM, stop_handler)
-    print("Using session {}".format(get_session_folder()))
-    setup_logging()
-    LOGGER.info("=============================================")
-    LOGGER.info("              Started  {} {}               ".format(__name__, get_version()))
-    LOGGER.info("=============================================")
-    print("Using session {}".format(get_session_folder()))
+# def main1():
+#     signal.signal(signal.SIGINT, stop_handler)
+#     signal.signal(signal.SIGTERM, stop_handler)
+#     print("Using session {}".format(get_session_folder()))
+#     setup_logging()
+#     LOGGER.info("=============================================")
+#     LOGGER.info("              Started  {} {}               ".format(__name__, get_version()))
+#     LOGGER.info("=============================================")
+#     print("Using session {}".format(get_session_folder()))
 
-    controllers.get_gpu_id_for_the_channel(0, 75, 416, 416)
-    controllers.get_gpu_id_for_the_channel(0, 75, 416, 416)
+#     controllers.get_gpu_id_for_the_channel(0, 75, 416, 416)
+#     controllers.get_gpu_id_for_the_channel(0, 75, 416, 416)
 
-    controllers.get_gpu_id_for_the_channel(0, 76, 416, 416)
-    controllers.get_gpu_id_for_the_channel(0, 75, 416, 416)
+#     controllers.get_gpu_id_for_the_channel(0, 76, 416, 416)
+#     controllers.get_gpu_id_for_the_channel(0, 75, 416, 416)
 
-    controllers.get_gpu_id_for_the_channel(0, 75, 416, 416)
-    controllers.get_gpu_id_for_the_channel(0, 75, 416, 416)
+#     controllers.get_gpu_id_for_the_channel(0, 75, 416, 416)
+#     controllers.get_gpu_id_for_the_channel(0, 75, 416, 416)
