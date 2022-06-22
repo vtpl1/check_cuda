@@ -94,10 +94,11 @@ def main():
         # LOGGER.fatal(e)
         raise_unhandled_exeception_error()
     if l is not None:
+        print("Here stop")
         l.stop()
 
     LOGGER.info("=============================================")
-    LOGGER.info("              Shutdown complete {} {}               ".format(__name__, get_version()))
+    LOGGER.info("             1Shutdown complete {} {}               ".format(__name__, get_version()))
     LOGGER.info("=============================================")
 
 # def main1():

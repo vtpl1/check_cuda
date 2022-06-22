@@ -113,6 +113,7 @@ class LogCpuGpuUsage(Thread):
         if self.__is_already_shutting_down:
             return
         self.__is_already_shutting_down = True
+        print("Stop called")
         self.__is_stop.set()
 
     def __del__(self):
