@@ -42,22 +42,23 @@ class LogCpuGpuUsage(Thread):
         db_name = "Hajmola"
         measurement_name = "cpu_gpu"
         client = None
-        try:
-            client = InfluxDBClient('192.168.1.174', 8086, 'admin', 'admin123')
-            list_of_database = client.get_list_database()
-            list_of_database = [values for item in list_of_database for key, values in item.items()]
+        if False:
+            try:
+                client = InfluxDBClient('192.168.1.174', 8086, 'admin', 'admin123')
+                list_of_database = client.get_list_database()
+                list_of_database = [values for item in list_of_database for key, values in item.items()]
 
-            if db_name not in list_of_database:
-                LOGGER.info("Create database: " + db_name)
-                client.create_database(db_name)
-                # self.__client.create_retention_policy('sajag_policy',
-                #                                       '4w',
-                #                                       3,
-                #                                       database=self.__db_name)
-            client.close()
-            client = InfluxDBClient('192.168.1.156', 8086, 'admin', 'admin123', database=db_name)
-        except Exception as e:
-            print(e)
+                if db_name not in list_of_database:
+                    LOGGER.info("Create database: " + db_name)
+                    client.create_database(db_name)
+                    # self.__client.create_retention_policy('sajag_policy',
+                    #                                       '4w',
+                    #                                       3,
+                    #                                       database=self.__db_name)
+                client.close()
+                client = InfluxDBClient('192.168.1.156', 8086, 'admin', 'admin123', database=db_name)
+            except Exception as e:
+                print(e)
 
         while True:
             s_influx = (f"cpu_percent={obj.cpu.cpu_percent},"
