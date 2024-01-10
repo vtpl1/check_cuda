@@ -1,16 +1,21 @@
-FROM nvidia/cuda:10.2-cudnn7-runtime-ubuntu18.04
-#FROM ubuntu:18.04
-RUN apt update && apt install -y python3-pip curl git ninja-build
-RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-RUN python3 get-pip.py
+FROM ubuntu:20.04
 
-COPY requirements.dev.txt /tmp/pip-tmp/
-RUN pip3 --disable-pip-version-check --no-cache-dir install -r /tmp/pip-tmp/requirements.dev.txt \
-    && rm -rf /tmp/pip-tmp
+RUN apt update && export DEBIAN_FRONTEND=noninteractive \
+    && apt install -y software-properties-common build-essential \
+    curl wget git \
+    python3 python3-distutils python3-dev cmake
 
-COPY requirements.prod.txt /tmp/pip-tmp/
-RUN pip3 --disable-pip-version-check --no-cache-dir install -r /tmp/pip-tmp/requirements.prod.txt \
-    && rm -rf /tmp/pip-tmp
+RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
+    && python3 get-pip.py \
+    && rm get-pip.py \
+    && pip install --upgrade pip \
+    && pip install pipx \
+    && python3 -m pipx ensurepath
+
+RUN pip install poetry \
+    && poetry self add poetry-bumpversion
+
+ENV SHELL /bin/bash
 
 ARG USERNAME=vadmin
 ARG USER_UID=1000
@@ -23,3 +28,7 @@ RUN groupadd --gid $USER_GID $USERNAME \
 RUN groupmod --gid $USER_GID $USERNAME \
     && usermod --uid $USER_UID --gid $USER_GID $USERNAME \
     && chown -R $USER_UID:$USER_GID /home/$USERNAME
+
+USER $USERNAME
+
+RUN pip install urllib3 idna certifi

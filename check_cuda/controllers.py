@@ -2,16 +2,24 @@ import ctypes
 import logging
 import os
 import platform
-from typing import Dict, List, Union
+from threading import Lock
+from typing import List, Union
 
 import psutil
 import pynvml as N
 from cpuinfo import get_cpu_info
-from singleton_decorator.decorator import singleton
-import yaml
 
-from .models import (ChannelAndNnModel, CpuInfo, CpuStatus, GpuInfo, GpuStatus, ModelCount, NnModelInfo, NnModelMaxChannelInfo, NnModelMaxChannelInfoList, ProcessStatus,
-                     SystemInfo, SystemStatus)
+# from singleton_decorator.decorator import singleton
+
+from .models import (
+    CpuInfo,
+    CpuStatus,
+    GpuInfo,
+    GpuStatus,
+    ProcessStatus,
+    SystemInfo,
+    SystemStatus,
+)
 
 # Some constants taken from cuda.h
 CUDA_SUCCESS = 0
@@ -19,7 +27,7 @@ CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT = 16
 CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR = 39
 CU_DEVICE_ATTRIBUTE_CLOCK_RATE = 13
 CU_DEVICE_ATTRIBUTE_MEMORY_CLOCK_RATE = 36
-NOT_SUPPORTED = 'Not Supported'
+NOT_SUPPORTED = "Not Supported"
 MB = 1024 * 1024
 
 
@@ -29,25 +37,25 @@ def ConvertSMVer2Cores(major, minor):
     # the API, so it needs to be hard-coded.
     # See _ConvertSMVer2Cores in helper_cuda.h in NVIDIA's CUDA Samples.
     return {
-        (1, 0): 8,    # Tesla
+        (1, 0): 8,  # Tesla
         (1, 1): 8,
         (1, 2): 8,
         (1, 3): 8,
-        (2, 0): 32,    # Fermi
+        (2, 0): 32,  # Fermi
         (2, 1): 48,
-        (3, 0): 192,    # Kepler
+        (3, 0): 192,  # Kepler
         (3, 2): 192,
         (3, 5): 192,
         (3, 7): 192,
-        (5, 0): 128,    # Maxwell
+        (5, 0): 128,  # Maxwell
         (5, 2): 128,
         (5, 3): 128,
-        (6, 0): 64,    # Pascal
+        (6, 0): 64,  # Pascal
         (6, 1): 128,
         (6, 2): 128,
-        (7, 0): 64,    # Volta
+        (7, 0): 64,  # Volta
         (7, 2): 64,
-        (7, 5): 64,    # Turing
+        (7, 5): 64,  # Turing
     }.get((major, minor), 0)
 
 
@@ -57,8 +65,11 @@ LOGGER = logging.getLogger(__name__)
 #     'https://api.ipify.org?format=json'
 
 
-@singleton
+# @singleton
 class GpuInfoFromNvml(object):
+    __singleton_lock = Lock()
+    __singleton_instance = None
+
     def __init__(self):
         self.__is_nvml_loaded = False
         self.__gpu_processes: List[ProcessStatus] = []
@@ -77,7 +88,7 @@ class GpuInfoFromNvml(object):
 
     def _decode(self, b):
         if isinstance(b, bytes):
-            return b.decode('utf-8')    # for python3, to unicode
+            return b.decode("utf-8")  # for python3, to unicode
         return b
 
     def get_gpu_status_by_gpu_id(self, index) -> Union[GpuStatus, None]:
@@ -89,19 +100,21 @@ class GpuInfoFromNvml(object):
             gpu_status.name = self._decode(N.nvmlDeviceGetName(handle))
             gpu_status.uuid = self._decode(N.nvmlDeviceGetUUID(handle))
             try:
-                gpu_status.temperature = N.nvmlDeviceGetTemperature(handle, N.NVML_TEMPERATURE_GPU)
+                gpu_status.temperature = N.nvmlDeviceGetTemperature(
+                    handle, N.NVML_TEMPERATURE_GPU
+                )
             except N.NVMLError:
-                gpu_status.temperature = None    # Not supported
+                gpu_status.temperature = None  # Not supported
             try:
                 gpu_status.fan_speed = N.nvmlDeviceGetFanSpeed(handle)
             except N.NVMLError:
-                gpu_status.fan_speed = None    # Not supported
+                gpu_status.fan_speed = None  # Not supported
             try:
-                memory = N.nvmlDeviceGetMemoryInfo(handle)   # in Bytes
+                memory = N.nvmlDeviceGetMemoryInfo(handle)  # in Bytes
                 gpu_status.memory_used = memory.used // MB
                 gpu_status.memory_total = memory.total // MB
             except N.NVMLError:
-                gpu_status.memory_used = None    # Not supported
+                gpu_status.memory_used = None  # Not supported
                 gpu_status.memory_total = None
 
             try:
@@ -111,7 +124,7 @@ class GpuInfoFromNvml(object):
                 else:
                     gpu_status.utilization_gpu = None
             except N.NVMLError:
-                gpu_status.utilization_gpu = None    # Not supported
+                gpu_status.utilization_gpu = None  # Not supported
 
             try:
                 utilization_enc = N.nvmlDeviceGetEncoderUtilization(handle)
@@ -120,7 +133,7 @@ class GpuInfoFromNvml(object):
                 else:
                     gpu_status.utilization_enc = None
             except N.NVMLError:
-                gpu_status.utilization_enc = None    # Not supported
+                gpu_status.utilization_enc = None  # Not supported
 
             try:
                 utilization_dec = N.nvmlDeviceGetDecoderUtilization(handle)
@@ -129,18 +142,18 @@ class GpuInfoFromNvml(object):
                 else:
                     gpu_status.utilization_dec = None
             except N.NVMLError:
-                gpu_status.utilization_dec = None    # Not supported
+                gpu_status.utilization_dec = None  # Not supported
 
             try:
                 nv_comp_processes = N.nvmlDeviceGetComputeRunningProcesses(handle)
             except N.NVMLError:
-                nv_comp_processes = None    # Not supported
+                nv_comp_processes = None  # Not supported
             try:
                 nv_graphics_processes = N.nvmlDeviceGetGraphicsRunningProcesses(handle)
             except N.NVMLError:
-                nv_graphics_processes = None    # Not supported
+                nv_graphics_processes = None  # Not supported
             if nv_comp_processes is None and nv_graphics_processes is None:
-                processes = None
+                pass
             else:
                 nv_comp_processes = nv_comp_processes or []
                 nv_graphics_processes = nv_graphics_processes or []
@@ -155,8 +168,11 @@ class GpuInfoFromNvml(object):
                         process = get_process_status_by_pid(nv_process.pid)
                         # Bytes to MBytes
                         # if drivers are not TTC this will be None.
-                        usedmem = nv_process.usedGpuMemory // MB if \
-                            nv_process.usedGpuMemory else None
+                        usedmem = (
+                            nv_process.usedGpuMemory // MB
+                            if nv_process.usedGpuMemory
+                            else None
+                        )
                         process.gpu_memory_usage_mib = usedmem
                         process.gpu_id = index
                         self.__gpu_processes.append(process)
@@ -165,7 +181,6 @@ class GpuInfoFromNvml(object):
                         # e.g. nvidia-smi reset  or  reboot the system
                         pass
         return gpu_status
-
 
     def get_gpu_info_by_gpu_id(self, index) -> Union[GpuInfo, None]:
         gpu_info = None
@@ -177,22 +192,20 @@ class GpuInfoFromNvml(object):
             gpu_info.uuid = self._decode(N.nvmlDeviceGetUUID(handle))
 
             try:
-                memory = N.nvmlDeviceGetMemoryInfo(handle)   # in Bytes                
+                memory = N.nvmlDeviceGetMemoryInfo(handle)  # in Bytes
                 gpu_info.free_memory_mib = (memory.total - memory.used) // MB
                 gpu_info.total_memory_mib = memory.total // MB
             except N.NVMLError:
-                gpu_info.free_memory_mib = None    # Not supported
+                gpu_info.free_memory_mib = None  # Not supported
                 gpu_info.total_memory_mib = None
 
-
         return gpu_info
-
 
     def get_process_status_running_on_gpus(self) -> List[ProcessStatus]:
         return self.__gpu_processes
 
     def get_gpu_status(self) -> List[GpuStatus]:
-        gpu_list = []        
+        gpu_list = []
         if self.__is_nvml_loaded:
             device_count = N.nvmlDeviceGetCount()
             self.__gpu_processes.clear()
@@ -212,7 +225,16 @@ class GpuInfoFromNvml(object):
                     gpu_list.append(gpu_status)
         return gpu_list
 
-@singleton
+    @classmethod
+    def instance(cls):
+        if not cls.__singleton_instance:
+            with cls.__singleton_lock:
+                if not cls.__singleton_instance:
+                    cls.__singleton_instance = cls()
+        return cls.__singleton_instance
+
+
+# @singleton
 class GpuInfoFromCudaLib:
     def __init__(self):
         self.__cuda = None
@@ -220,19 +242,18 @@ class GpuInfoFromCudaLib:
 
     def get_gpu_info(self) -> List[GpuInfo]:
         if self.__cuda is None:
-            libnames = ('libcuda.so', 'libcuda.dylib', 'cuda.dll')
+            libnames = ("libcuda.so", "libcuda.dylib", "cuda.dll")
             for libname in libnames:
                 try:
                     self.__cuda = ctypes.CDLL(libname)
-                    LOGGER.info('Loading cuda libraries')
+                    LOGGER.info("Loading cuda libraries")
                 except OSError:
                     continue
                 else:
                     break
             if self.__cuda is not None:
-
                 nGpus = ctypes.c_int()
-                name = b' ' * 100
+                name = b" " * 100
                 cc_major = ctypes.c_int()
                 cc_minor = ctypes.c_int()
                 cores = ctypes.c_int()
@@ -251,96 +272,168 @@ class GpuInfoFromCudaLib:
                     result = self.__cuda.cuInit(0)
                     if result != CUDA_SUCCESS:
                         self.__cuda.cuGetErrorString(result, ctypes.byref(error_str))
-                        LOGGER.error("cuInit failed with error code %d: %s" % (result, error_str.value.decode()))
+                        LOGGER.error(
+                            "cuInit failed with error code %d: %r"
+                            % (int(result), error_str.value)
+                        )
                         break
                     result = self.__cuda.cuDeviceGetCount(ctypes.byref(nGpus))
                     if result != CUDA_SUCCESS:
                         self.__cuda.cuGetErrorString(result, ctypes.byref(error_str))
-                        LOGGER.error("cuDeviceGetCount failed with error code %d: %s" %
-                                     (result, error_str.value.decode()))
+                        LOGGER.error(
+                            "cuDeviceGetCount failed with error code %d: %r"
+                            % (int(result), error_str.value)
+                        )
                         break
                     LOGGER.debug("Found %d device(s)." % nGpus.value)
                     for i in range(nGpus.value):
-                        cuda_device_name = ''
+                        cuda_device_name = ""
                         cuda_compute_capability_major = 0
                         cuda_compute_capability_minor = 0
                         cuda_cores = 0
                         cuda_concurrent_threads = 0
-                        cuda_gpu_clock_mhz = 0
-                        cuda_memory_clock_mhz = 0
+                        cuda_gpu_clock_mhz = 0.0
+                        cuda_memory_clock_mhz = 0.0
                         cuda_total_memory_mib = 0
                         cuda_free_memory_mib = 0
 
                         result = self.__cuda.cuDeviceGet(ctypes.byref(device), i)
                         if result != CUDA_SUCCESS:
-                            self.__cuda.cuGetErrorString(result, ctypes.byref(error_str))
-                            LOGGER.error("cuDeviceGet failed with error code %d: %s" %
-                                         (result, error_str.value.decode()))
+                            self.__cuda.cuGetErrorString(
+                                result, ctypes.byref(error_str)
+                            )
+                            LOGGER.error(
+                                "cuDeviceGet failed with error code %d: %r"
+                                % (int(result), error_str.value)
+                            )
                             break
                         LOGGER.debug("Nvidia Device: %d" % i)
 
-                        if self.__cuda.cuDeviceGetName(ctypes.c_char_p(name), len(name), device) == CUDA_SUCCESS:
-                            cuda_device_name = (name.split(b'\0', 1)[0].decode())
+                        if (
+                            self.__cuda.cuDeviceGetName(
+                                ctypes.c_char_p(name), len(name), device
+                            )
+                            == CUDA_SUCCESS
+                        ):
+                            cuda_device_name = name.split(b"\0", 1)[0].decode()
 
                             LOGGER.debug("  Name: %s" % cuda_device_name)
-                        if self.__cuda.cuDeviceComputeCapability(ctypes.byref(cc_major), ctypes.byref(cc_minor),
-                                                                 device) == CUDA_SUCCESS:
+                        if (
+                            self.__cuda.cuDeviceComputeCapability(
+                                ctypes.byref(cc_major), ctypes.byref(cc_minor), device
+                            )
+                            == CUDA_SUCCESS
+                        ):
                             cuda_compute_capability_major = cc_major.value
                             cuda_compute_capability_minor = cc_minor.value
 
-                            LOGGER.debug("  Compute Capability: %d.%d" %
-                                         (cuda_compute_capability_major, cuda_compute_capability_minor))
-                        if self.__cuda.cuDeviceGetAttribute(ctypes.byref(cores),
-                                                            CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT,
-                                                            device) == CUDA_SUCCESS:
+                            LOGGER.debug(
+                                "  Compute Capability: %d.%d"
+                                % (
+                                    cuda_compute_capability_major,
+                                    cuda_compute_capability_minor,
+                                )
+                            )
+                        if (
+                            self.__cuda.cuDeviceGetAttribute(
+                                ctypes.byref(cores),
+                                CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT,
+                                device,
+                            )
+                            == CUDA_SUCCESS
+                        ):
                             LOGGER.debug("  Multiprocessors: %d" % cores.value)
-                            cuda_cores = cores.value * ConvertSMVer2Cores(cc_major.value, cc_minor.value)
+                            cuda_cores = cores.value * ConvertSMVer2Cores(
+                                cc_major.value, cc_minor.value
+                            )
                             LOGGER.debug("  CUDA Cores: %s" % (cuda_cores or "unknown"))
-                            if self.__cuda.cuDeviceGetAttribute(ctypes.byref(threads_per_core),
-                                                                CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR,
-                                                                device) == CUDA_SUCCESS:
-                                cuda_concurrent_threads = cores.value * threads_per_core.value
-                                LOGGER.debug("  Concurrent threads: %d" % (cuda_concurrent_threads))
-                        if self.__cuda.cuDeviceGetAttribute(ctypes.byref(clockrate), CU_DEVICE_ATTRIBUTE_CLOCK_RATE,
-                                                            device) == CUDA_SUCCESS:
-                            cuda_gpu_clock_mhz = clockrate.value / 1000.
+                            if (
+                                self.__cuda.cuDeviceGetAttribute(
+                                    ctypes.byref(threads_per_core),
+                                    CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR,
+                                    device,
+                                )
+                                == CUDA_SUCCESS
+                            ):
+                                cuda_concurrent_threads = (
+                                    cores.value * threads_per_core.value
+                                )
+                                LOGGER.debug(
+                                    "  Concurrent threads: %d"
+                                    % (cuda_concurrent_threads)
+                                )
+                        if (
+                            self.__cuda.cuDeviceGetAttribute(
+                                ctypes.byref(clockrate),
+                                CU_DEVICE_ATTRIBUTE_CLOCK_RATE,
+                                device,
+                            )
+                            == CUDA_SUCCESS
+                        ):
+                            cuda_gpu_clock_mhz = clockrate.value / 1000.0
                             LOGGER.debug("  GPU clock: %g MHz" % (cuda_gpu_clock_mhz))
-                        if self.__cuda.cuDeviceGetAttribute(ctypes.byref(clockrate),
-                                                            CU_DEVICE_ATTRIBUTE_MEMORY_CLOCK_RATE,
-                                                            device) == CUDA_SUCCESS:
-                            cuda_memory_clock_mhz = clockrate.value / 1000.
-                            LOGGER.debug("  Memory clock: %g MHz" % (cuda_memory_clock_mhz))
-                        result = self.__cuda.cuCtxCreate(ctypes.byref(context), 0, device)
+                        if (
+                            self.__cuda.cuDeviceGetAttribute(
+                                ctypes.byref(clockrate),
+                                CU_DEVICE_ATTRIBUTE_MEMORY_CLOCK_RATE,
+                                device,
+                            )
+                            == CUDA_SUCCESS
+                        ):
+                            cuda_memory_clock_mhz = clockrate.value / 1000.0
+                            LOGGER.debug(
+                                "  Memory clock: %g MHz" % (cuda_memory_clock_mhz)
+                            )
+                        result = self.__cuda.cuCtxCreate(
+                            ctypes.byref(context), 0, device
+                        )
                         if result != CUDA_SUCCESS:
-                            self.__cuda.cuGetErrorString(result, ctypes.byref(error_str))
-                            LOGGER.error("cuCtxCreate failed with error code %d: %s" %
-                                         (result, error_str.value.decode()))
+                            self.__cuda.cuGetErrorString(
+                                result, ctypes.byref(error_str)
+                            )
+                            LOGGER.error(
+                                "cuCtxCreate failed with error code %d: %r"
+                                % (int(result), error_str.value)
+                            )
                         else:
-                            result = self.__cuda.cuMemGetInfo(ctypes.byref(freeMem), ctypes.byref(totalMem))
+                            result = self.__cuda.cuMemGetInfo(
+                                ctypes.byref(freeMem), ctypes.byref(totalMem)
+                            )
                             if result == CUDA_SUCCESS:
-                                cuda_total_memory_mib = totalMem.value / 1024**2
-                                LOGGER.debug("  Total Memory: %ld MiB" % (cuda_total_memory_mib))
+                                cuda_total_memory_mib = int(totalMem.value / 1024**2)
+                                LOGGER.debug(
+                                    "  Total Memory: %f MiB" % (cuda_total_memory_mib)
+                                )
 
-                                cuda_free_memory_mib = freeMem.value / 1024**2
+                                cuda_free_memory_mib = int(freeMem.value / 1024**2)
 
-                                LOGGER.debug("  Free Memory: %ld MiB" % (cuda_free_memory_mib))
+                                LOGGER.debug(
+                                    "  Free Memory: %f MiB" % (cuda_free_memory_mib)
+                                )
                             else:
-                                self.__cuda.cuGetErrorString(result, ctypes.byref(error_str))
-                                LOGGER.error("cuMemGetInfo failed with error code %d: %s" %
-                                             (result, error_str.value.decode()))
+                                self.__cuda.cuGetErrorString(
+                                    result, ctypes.byref(error_str)
+                                )
+                                LOGGER.error(
+                                    "cuMemGetInfo failed with error code %d: %r"
+                                    % (int(result), error_str.value)
+                                )
                             self.__cuda.cuCtxDetach(context)
-                        self.__nvidia_device_list.append(GpuInfo(
-                            i,
-                            cuda_device_name,
-                            cuda_compute_capability_major,
-                            cuda_compute_capability_minor,
-                            cuda_cores,
-                            cuda_concurrent_threads,
-                            cuda_gpu_clock_mhz,
-                            cuda_memory_clock_mhz,
-                            cuda_total_memory_mib,
-                            cuda_free_memory_mib,
-                        ))
+                        self.__nvidia_device_list.append(
+                            GpuInfo(
+                                i,
+                                cuda_device_name,
+                                cuda_total_memory_mib,
+                                cuda_free_memory_mib,
+                                "uuid",
+                                cuda_compute_capability_major,
+                                cuda_compute_capability_minor,
+                                cuda_cores,
+                                cuda_concurrent_threads,
+                                cuda_gpu_clock_mhz,
+                                cuda_memory_clock_mhz,
+                            )
+                        )
 
         return self.__nvidia_device_list
 
@@ -351,7 +444,7 @@ def get_process_status_by_pid(pid) -> ProcessStatus:
     return process
 
 
-def get_process_status_by_name(name='python3') -> List[ProcessStatus]:
+def get_process_status_by_name(name="python") -> List[ProcessStatus]:
     process_list = []
     for ps_process in psutil.process_iter():
         name_, exe, cmdline = "", "", []
@@ -370,10 +463,10 @@ def get_process_status_by_name(name='python3') -> List[ProcessStatus]:
 
 
 def get_process_status_running_on_gpus() -> List[ProcessStatus]:
-    return GpuInfoFromNvml().get_process_status_running_on_gpus()
+    return GpuInfoFromNvml.instance().get_process_status_running_on_gpus()
 
 
-def _extract_process_info(ps_process) -> ProcessStatus:
+def _extract_process_info(ps_process: psutil.Process) -> ProcessStatus:
     process = ProcessStatus()
     try:
         process.username = ps_process.username()
@@ -389,15 +482,17 @@ def _extract_process_info(ps_process) -> ProcessStatus:
 
     if not _cmdline:
         # sometimes, zombie or unknown (e.g. [kworker/8:2H])
-        process.command = '?'
-        process.full_command = ['?']
+        process.command = "?"
+        process.full_command = "?"
     else:
         process.command = os.path.basename(_cmdline[0])
         process.full_command = _cmdline
     try:
-        process.cpu_percent = ps_process.cpu_percent() / psutil.cpu_count()
-        process.cpu_memory_usage_mib = round((ps_process.memory_percent() / 100.0) *
-                                         psutil.virtual_memory().total // MB)
+        cpu_percent = ps_process.cpu_percent(interval=0.1)
+        process.cpu_percent = round(cpu_percent / psutil.cpu_count(), 1)
+        process.cpu_memory_usage_mib = round(
+            (ps_process.memory_percent() / 100.0) * psutil.virtual_memory().total // MB
+        )
     except psutil.AccessDenied:
         pass
     process.pid = ps_process.pid
@@ -408,24 +503,34 @@ def get_process_status() -> List[ProcessStatus]:
     ret = get_process_status_running_on_gpus()
     if not len(ret):
         ret = get_process_status_by_name()
+    else:
+        ret1 = []
+        for r in ret:
+            x = get_process_status_by_pid(r.pid)
+            ret1.append(x)
+        return ret1
     return ret
 
 
 def get_cpu_status() -> CpuStatus:
-    return CpuStatus(cpu_percent=psutil.cpu_percent(),
-                     cpu_memory_usage_percent=psutil.virtual_memory().percent)
+    return CpuStatus(
+        cpu_percent=psutil.cpu_percent(),
+        cpu_memory_usage_percent=psutil.virtual_memory().percent,
+    )
 
 
 def get_gpu_status() -> List[GpuStatus]:
-    return GpuInfoFromNvml().get_gpu_status()
+    return GpuInfoFromNvml.instance().get_gpu_status()
 
 
 def get_gpu_info() -> List[GpuInfo]:
-    return GpuInfoFromNvml().get_gpu_info()
+    return GpuInfoFromNvml.instance().get_gpu_info()
 
 
 def get_system_status() -> SystemStatus:
-    return SystemStatus(cpu=get_cpu_status(), gpus=get_gpu_status(), processes=get_process_status())
+    return SystemStatus(
+        cpu=get_cpu_status(), gpus=get_gpu_status(), processes=get_process_status()
+    )
 
 
 def get_cpu() -> CpuInfo:
@@ -444,61 +549,73 @@ def get_cpu() -> CpuInfo:
 
 
 def get_system_info() -> SystemInfo:
-    return SystemInfo(host_name=platform.uname().node, os=platform.platform(), cpu=get_cpu(), gpus=get_gpu_info())
+    return SystemInfo(
+        host_name=platform.uname().node,
+        os=platform.platform(),
+        cpu=get_cpu(),
+        gpus=get_gpu_info(),
+    )
 
 
-@singleton
-class ChannelGpuManager:
-    """
-    docstring
-    """
-    def __init__(self) -> None:
-        self.channel_to_gpu_map: Dict[ChannelAndNnModel, ModelCount] = {}
-        self.gpu_id_generator = 0
-        self.configuration_file_name = self.__class__.__name__ + ".yml"
-        self.model_list = self.__read_default_models()
-        self.number_of_gpus = len(get_gpu_status())
+# # @singleton
+# class ChannelGpuManager:
+#     """
+#     docstring
+#     """
 
-    def __write_default_models(self) -> NnModelMaxChannelInfoList:
-        model_list = NnModelMaxChannelInfoList()
-        model_list.models.append(NnModelMaxChannelInfo(key=NnModelInfo(75, 416, 416), max_channel=2))
-        model_list.models.append(NnModelMaxChannelInfo(key=NnModelInfo(76, 416, 416), max_channel=3))
+#     def __init__(self) -> None:
+#         self.channel_to_gpu_map: Dict[ChannelAndNnModel, ModelCount] = {}
+#         self.gpu_id_generator = 0
+#         self.configuration_file_name = self.__class__.__name__ + ".yml"
+#         self.model_list = self.__read_default_models()
+#         self.number_of_gpus = len(get_gpu_status())
 
-        with open(self.configuration_file_name, 'w') as outfile:
-            yaml.dump(model_list.to_dict(), outfile)
+#     def __write_default_models(self) -> NnModelMaxChannelInfoList:
+#         model_list = NnModelMaxChannelInfoList()
+#         model_list.models.append(
+#             NnModelMaxChannelInfo(key=NnModelInfo(75, 416, 416), max_channel=2)
+#         )
+#         model_list.models.append(
+#             NnModelMaxChannelInfo(key=NnModelInfo(76, 416, 416), max_channel=3)
+#         )
 
-        return model_list
+#         with open(self.configuration_file_name, "w") as outfile:
+#             yaml = YAML()
+#             yaml.dump(model_list.to_dict(), outfile)
 
-    def __read_default_models(self) -> NnModelMaxChannelInfoList:
-        model_list = None
-        try:
-            with open(self.configuration_file_name, 'r') as infile:
-                model_list = NnModelMaxChannelInfoList.from_dict(yaml.safe_load(infile))
-        except FileNotFoundError:
-            pass
-        if not model_list:
-            model_list = self.__write_default_models()
-        if not len(model_list.models):
-            model_list = self.__write_default_models()
-        return model_list
-        
+#         return model_list
 
-    def get_next_gpu_id(self) -> int:
-        ret = self.gpu_id_generator
-        if self.number_of_gpus:
-            self.gpu_id_generator = (self.gpu_id_generator + 1) % self.number_of_gpus
-        return ret
+#     def __read_default_models(self) -> NnModelMaxChannelInfoList:
+#         model_list = None
+#         try:
+#             with open(self.configuration_file_name, "r") as infile:
+#                 yaml = YAML()
+#                 model_list = NnModelMaxChannelInfoList.from_dict(yaml.load(infile))
+#         except FileNotFoundError:
+#             pass
+#         if not model_list:
+#             model_list = self.__write_default_models()
+#         if not len(model_list.models):
+#             model_list = self.__write_default_models()
+#         return model_list
 
-    
+#     def get_next_gpu_id(self) -> int:
+#         ret = self.gpu_id_generator
+#         if self.number_of_gpus:
+#             self.gpu_id_generator = (self.gpu_id_generator + 1) % self.number_of_gpus
+#         return ret
 
-def get_gpu_id_for_the_channel(channel_id: int, purpose: int, width: int, height: int, media_tpe: int = 2) -> int:
-    candidate = ChannelAndNnModel(channel_id, NnModelInfo(purpose, width, height))
-    if candidate in ChannelGpuManager().channel_to_gpu_map.keys():
-        x = ChannelGpuManager().channel_to_gpu_map[candidate]
-        x.count = x.count + 1
 
-    else:
-        x = ModelCount(gpu_id=ChannelGpuManager().get_next_gpu_id())
-        ChannelGpuManager().channel_to_gpu_map[candidate] = x
-    print(candidate, x)
-    return x.gpu_id
+# def get_gpu_id_for_the_channel(
+#     channel_id: int, purpose: int, width: int, height: int, media_tpe: int = 2
+# ) -> int:
+#     candidate = ChannelAndNnModel(channel_id, NnModelInfo(purpose, width, height))
+#     if candidate in ChannelGpuManager().channel_to_gpu_map.keys():
+#         x = ChannelGpuManager().channel_to_gpu_map[candidate]
+#         x.count = x.count + 1
+
+#     else:
+#         x = ModelCount(gpu_id=ChannelGpuManager().get_next_gpu_id())
+#         ChannelGpuManager().channel_to_gpu_map[candidate] = x
+#     print(candidate, x)
+#     return x.gpu_id

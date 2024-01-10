@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "check-cuda"
+version = "0.1.0"
+description = ""
+authors = ["Monotosh Das <monotosh.das@videonetics.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.8,<3.13"
+ruamel-yaml = "^0.18.5"
+psutil = "^5.9.7"
+pynvml = "^11.5.0"
+py-cpuinfo = "^9.0.0"
+dataclasses-json = "^0.6.3"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.12.1"
+mypy = "^1.8.0"
+isort = "^5.13.2"
+ruff = "^0.1.11"
+pyinstaller = "^6.3.0"
+types-psutil = "^5.9.5.20240106"
+types-pyinstaller = "^6.3.0.20240106"
+
+[tool.poetry.scripts]
+build = "pyinstaller:install"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

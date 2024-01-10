@@ -1,5 +1,18 @@
 import os
 import time
+import sys
+
+
+def get_app_folder():
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        # If the application is run as a bundle, the PyInstaller bootloader
+        # extends the sys module by a flag frozen=True and sets the app
+        # path into variable _MEIPASS'.
+        application_path = sys._MEIPASS  # pylint: disable=protected-access
+    else:
+        application_path = os.path.dirname(os.path.abspath(__file__))
+    return application_path + os.path.sep
+
 
 def get_folder(sub_folder) -> str:
     session_folder = os.path.join(os.getcwd(), sub_folder)
@@ -17,24 +30,25 @@ def get_session_folder() -> str:
     return get_folder("session")
 
 
-def get_app_folder() -> str:
-    return get_folder("app")
-
-
 def get_progress_folder() -> str:
     return get_session_folder()
+
 
 def get_data_folder() -> str:
     return get_session_folder()
 
+
 def get_config_folder() -> str:
     return get_session_folder()
+
 
 def get_temp_file_name() -> str:
     return time.strftime("%Y%m%d-%H%M%S")
 
+
 def get_final_file_name(initial_file_name: str) -> str:
     return initial_file_name + "_" + time.strftime("%Y%m%d-%H%M%S")
+
 
 def get_id():
     return int(round(time.time() * 1000000))
