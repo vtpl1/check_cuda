@@ -11,7 +11,7 @@ ruamel-yaml = "^0.18.5"
 psutil = "^5.9.7"
 pynvml = "^11.5.0"
 py-cpuinfo = "^9.0.0"
-dataclasses-json = "^0.6.3"
+pydantic = "^2.5.3"
 
 
 [tool.poetry.group.dev.dependencies]

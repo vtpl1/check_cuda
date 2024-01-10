@@ -5,10 +5,11 @@ import os
 import shutil
 import signal
 import threading
+
 from ruamel.yaml import YAML
 
 from . import controllers, log_cpu_gpu_usage
-from .utils import get_session_folder, get_app_folder
+from .utils import get_app_folder, get_session_folder
 
 LOGGER = logging.getLogger(__name__)
 

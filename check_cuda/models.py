@@ -1,12 +1,9 @@
-from dataclasses import dataclass, field
 from typing import List, Optional
 
-from dataclasses_json import DataClassJsonMixin, LetterCase, dataclass_json
+from pydantic import BaseModel
 
 
-@dataclass_json(letter_case=LetterCase.CAMEL)
-@dataclass
-class CpuInfo(DataClassJsonMixin):
+class CpuInfo(BaseModel):
     """
     docstring
     """
@@ -19,9 +16,7 @@ class CpuInfo(DataClassJsonMixin):
     vendor_id: str = ""
 
 
-@dataclass_json(letter_case=LetterCase.CAMEL)
-@dataclass
-class GpuInfo(DataClassJsonMixin):
+class GpuInfo(BaseModel):
     """
     Nvidia device data
     """
@@ -40,9 +35,7 @@ class GpuInfo(DataClassJsonMixin):
     memory_clock_mhz: Optional[float] = None
 
 
-@dataclass_json(letter_case=LetterCase.CAMEL)
-@dataclass
-class SystemInfo(DataClassJsonMixin):
+class SystemInfo(BaseModel):
     """
     docstring
     """
@@ -50,12 +43,10 @@ class SystemInfo(DataClassJsonMixin):
     host_name: str
     os: str
     cpu: CpuInfo
-    gpus: List[GpuInfo] = field(default_factory=list)
+    gpus: List[GpuInfo]
 
 
-@dataclass_json(letter_case=LetterCase.CAMEL)
-@dataclass
-class CpuStatus(DataClassJsonMixin):
+class CpuStatus(BaseModel):
     """
     docstring
     """
@@ -64,9 +55,7 @@ class CpuStatus(DataClassJsonMixin):
     cpu_memory_usage_percent: float = 0.0
 
 
-@dataclass_json(letter_case=LetterCase.CAMEL)
-@dataclass
-class GpuStatus(DataClassJsonMixin):
+class GpuStatus(BaseModel):
     """
     docstring
     """
@@ -85,9 +74,7 @@ class GpuStatus(DataClassJsonMixin):
     memory_total: Optional[int] = None
 
 
-@dataclass_json(letter_case=LetterCase.CAMEL)
-@dataclass
-class ProcessStatus(DataClassJsonMixin):
+class ProcessStatus(BaseModel):
     """
     docstring
     """
@@ -102,96 +89,11 @@ class ProcessStatus(DataClassJsonMixin):
     gpu_id: Optional[int] = None
 
 
-@dataclass_json(letter_case=LetterCase.CAMEL)
-@dataclass
-class SystemStatus(DataClassJsonMixin):
+class SystemStatus(BaseModel):
     """
     docstring
     """
 
     cpu: CpuStatus
-    gpus: List[GpuStatus] = field(default_factory=list)
-    processes: List[ProcessStatus] = field(default_factory=list)
-
-
-@dataclass_json(letter_case=LetterCase.CAMEL)
-@dataclass(unsafe_hash=True)
-class NnModelInfo(DataClassJsonMixin):
-    """
-    docstring
-    """
-
-    purpose: int
-    width: int
-    height: int
-    max_fps: int
-    memory: int
-
-
-@dataclass_json(letter_case=LetterCase.CAMEL)
-@dataclass
-class NnModelStatus(DataClassJsonMixin):
-    """
-    docstring
-    """
-
-    key: NnModelInfo
-    assigned_group_fps: int
-    number_of_assigned_channels: int
-    gpu_id: int
-    channel_list: List[int] = field(default_factory=list)
-    assigned_group_id_list: List[int] = field(default_factory=list)
-
-    # max_channel: int
-    # max_memory: int = 0
-    # max_fps: float = 0.0
-
-
-@dataclass_json(letter_case=LetterCase.CAMEL)
-@dataclass
-class NnModelMaxChannelInfo(DataClassJsonMixin):
-    """
-    docstring
-    """
-
-    key: NnModelInfo
-    max_channel: int
-    max_memory: int = 0
-    max_fps: float = 0.0
-
-
-@dataclass_json(letter_case=LetterCase.CAMEL)
-@dataclass
-class NnModelMaxChannelInfoList(DataClassJsonMixin):
-    models: List[NnModelMaxChannelInfo] = field(default_factory=list)
-
-
-@dataclass_json(letter_case=LetterCase.CAMEL)
-@dataclass(unsafe_hash=True)
-class ChannelAndNnModel(DataClassJsonMixin):
-    """
-    docstring
-    """
-
-    channel_id: int
-    model_id: NnModelInfo
-
-
-@dataclass_json(letter_case=LetterCase.CAMEL)
-@dataclass(unsafe_hash=True)
-class ModelCount(DataClassJsonMixin):
-    """
-    docstring
-    """
-
-    gpu_id: int
-    count: int = 1
-    fps_consumed: float = 0
-
-
-@dataclass_json(letter_case=LetterCase.CAMEL)
-@dataclass
-class ModelPerGpu(DataClassJsonMixin):
-    """
-    docstring
-    """
+    gpus: List[GpuStatus]
+    processes: List[ProcessStatus]
