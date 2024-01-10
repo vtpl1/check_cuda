@@ -113,6 +113,12 @@ class GpuInfoFromNvml:
             return b.decode("utf-8")  # for python3, to unicode
         return b
 
+    def get_process_status_running_on_gpus(self) -> List[ProcessStatus]:
+        ret = []
+        for gpu_process in self.__gpu_processes:
+            ret.append(get_process_status_by_pid(gpu_process.pid))
+        return ret
+
     def get_gpu_status_by_gpu_id(self, index) -> Optional[GpuStatus]:
         gpu_status = None
         if self.__is_nvml_loaded:
@@ -284,8 +290,15 @@ def get_gpu_status() -> List[GpuStatus]:
     return GpuInfoFromNvml.instance().get_gpu_status()
 
 
+def get_process_status_running_on_gpus() -> List[ProcessStatus]:
+    return GpuInfoFromNvml.instance().get_process_status_running_on_gpus()
+
+
 def get_process_status() -> List[ProcessStatus]:
-    return []
+    ret = get_process_status_running_on_gpus()
+    if not len(ret):
+        ret = get_process_status_by_name()
+    return ret
 
 
 def get_system_status() -> SystemStatus:
