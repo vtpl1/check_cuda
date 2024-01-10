@@ -1,5 +1,4 @@
 import logging
-import time
 from threading import Event, Thread
 
 from . import controllers
@@ -49,14 +48,7 @@ class LogCpuGpuUsage(Thread):
             i += 1
 
         LOGGER_CPU_USAGE.info(header)
-        db_name = "Hajmola"
-        measurement_name = "cpu_gpu"
-        client = None
         while True:
-            s_influx = (
-                f"cpu_percent={obj.cpu.cpu_percent},"
-                f"cpu_memory_usage_percent={obj.cpu.cpu_memory_usage_percent}"
-            )
             s = f"{obj.cpu.cpu_percent},{obj.cpu.cpu_memory_usage_percent},"
             i = 0
             for gpu in obj.gpus:
@@ -86,25 +78,9 @@ class LogCpuGpuUsage(Thread):
                 )
                 i += 1
             LOGGER_CPU_USAGE.info(s)
-            if client:
-                data = []
-                t = int(time.time() * 1000)
-                data_point = f"{measurement_name},host={host_name} {s_influx} {t}"
-                data.append(data_point)
-                # print(data_point)
-                print(s)
-                try:
-                    client.write_points(
-                        data, time_precision="ms", batch_size=1, protocol="line"
-                    )
-                except Exception as e:
-                    print(e)
-                    client = None
             if self.__is_stop.wait(1.0):
                 break
             else:
                 obj = controllers.get_system_status()
                 continue
-        if client:
-            client.close()
         LOGGER_CPU_USAGE.info("============== End   ================")
